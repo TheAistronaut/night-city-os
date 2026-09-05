@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>NIGHT CITY OS</title>
+<title>CYBER-TRACKER</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#05060A">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Night City OS">
+<meta name="apple-mobile-web-app-title" content="Cyber-Tracker">
 <style>
 /* ============================================================
    NIGHT CITY OS — visual layer
@@ -74,6 +74,13 @@
   --line-strong:    #1CB5A3;
   --line-weak:      #1E2634;
 
+  /* Ambient HUD — alpha values, kept here with every other colour */
+  --glow-struct:    #1CB5A31F;
+  --glow-earn:      #FCEE0A0F;
+  --grid-line:      #FFFFFF08;
+  --scrim:          #00000059;
+  --edge-hi:        #FFFFFF12;
+
   /* Faces */
   --f-ui:  "Rajdhani", system-ui, -apple-system, sans-serif;
   --f-num: "Orbitron", "Rajdhani", system-ui, sans-serif;
@@ -115,14 +122,6 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-/* Ambient scanlines. Static, never animated, default off — a tracker
-   opened for fifteen seconds a day is not a battery consideration. */
-body[data-ambient="1"]::after {
-  content: ""; position: fixed; inset: 0; z-index: 60; pointer-events: none;
-  background: repeating-linear-gradient(var(--bg-inset) 0 1px, transparent 1px 3px);
-  opacity: .5;
 }
 
 /* --- tabular figures ---
@@ -272,6 +271,11 @@ body[data-ambient="1"] .card.frac .run { animation: glitch 400ms steps(1) infini
   75%  { transform: none;                clip-path: none; }
   100% { transform: none;                text-shadow: 1.5px 0 var(--struct-bright), -1.5px 0 var(--risk-deep); }
 }
+
+.glyphrow { display: flex; align-items: center; gap: 12px; }
+.cardglyph { flex: none; color: var(--edge); display: flex; }
+.card.done .cardglyph { color: var(--earn); }
+.glyphrow .grow { flex: 1; min-width: 0; }
 
 /* --- buttons --- */
 button { cursor: pointer; font-family: var(--f-ui); }
@@ -554,6 +558,175 @@ textarea { min-height: 76px; resize: vertical; }
 #toast.earn { border-color: var(--earn); color: var(--earn); }
 #toast.on { display: block; animation: rise 180ms both; }
 
+
+/* ============================================================
+   AMBIENT — premium HUD, not a degraded CRT.
+   A blueprint grid at the threshold of visibility, soft bloom off
+   the top and bottom edges, and a vignette. All static gradients:
+   nothing flickers, nothing loops, nothing costs battery.
+   ============================================================ */
+body[data-ambient="1"]::after {
+  content: ""; position: fixed; inset: 0; z-index: 60; pointer-events: none;
+  background:
+    radial-gradient(130% 70% at 50% -15%, var(--glow-struct), transparent 62%),
+    radial-gradient(120% 55% at 50% 115%, var(--glow-earn), transparent 62%),
+    radial-gradient(140% 100% at 50% 50%, transparent 55%, var(--scrim)),
+    linear-gradient(transparent 47px, var(--grid-line) 47px) 0 0 / 100% 48px,
+    linear-gradient(90deg, transparent 47px, var(--grid-line) 47px) 0 0 / 48px 100%;
+}
+
+/* ============================================================
+   PALETTE VARIANTS
+   Only the structure colour and the ground move. Earned stays
+   yellow and at-risk stays red in every theme — those two carry
+   meaning, so a theme is never allowed to touch them.
+   ============================================================ */
+body[data-theme="militech"] {
+  --struct: #4C8DFF; --struct-bright: #86B4FF; --struct-dim: #2B558F;
+  --line-strong: #4C8DFF; --line-weak: #1B2536;
+  --glow-struct: #4C8DFF1F;
+}
+body[data-theme="netwatch"] {
+  --struct: #C3D2E4; --struct-bright: #F2F7FF; --struct-dim: #6B7B90;
+  --line-strong: #C3D2E4; --line-weak: #232A34;
+  --glow-struct: #C3D2E416;
+}
+body[data-theme="arasaka"] {
+  --bg-void: #0A0507; --bg-panel: #150A0D; --bg-raised: #21121A; --bg-inset: #060203;
+  --struct: #A8B4C2; --struct-bright: #DCE6F2; --struct-dim: #5A6472;
+  --line-strong: #A8B4C2; --line-weak: #2A1B20;
+  --glow-struct: #9D25291F;
+}
+body[data-theme="kangtao"] {
+  --bg-void: #05080A; --bg-panel: #0B1114; --bg-raised: #121B1F; --bg-inset: #020506;
+  --struct: #37C8A0; --struct-bright: #6BF0CB; --struct-dim: #1E7A61;
+  --line-strong: #37C8A0; --line-weak: #17242A;
+  --glow-struct: #37C8A01F;
+}
+
+/* ============================================================
+   GLYPHS
+   ============================================================ */
+.gl {
+  width: 24px; height: 24px; flex: none; display: block;
+  fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: square; stroke-linejoin: miter;
+}
+/* Scaled up, the stroke scales too, so the nominal width comes down
+   to land near 2px rendered — the brief's preferred weight. */
+.gl.big  { width: 34px; height: 34px; stroke-width: 1.3; }
+.gl.huge { width: 52px; height: 52px; stroke-width: 1.0; }
+
+.glyphsel {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px; margin-bottom: 4px;
+  background: var(--bg-panel); border: 1.5px solid var(--line-weak);
+  clip-path: var(--cut-12);
+  color: var(--struct);
+}
+.glyphcats { display: flex; gap: 6px; overflow-x: auto; padding: 10px 0 4px; }
+.glyphcats button {
+  flex: none; min-height: 40px; padding: 0 12px;
+  background: none; border: 1.5px solid var(--line-weak); color: var(--text-secondary);
+  clip-path: var(--cut-8);
+  font: 600 13px/1 var(--f-ui); letter-spacing: .1em; text-transform: uppercase;
+}
+.glyphcats button.on { border-color: var(--earn); color: var(--earn); }
+.glyphgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 8px; margin-top: 8px; }
+.glyphgrid button {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-inset); border: 1.5px solid var(--line-weak); color: var(--struct);
+  clip-path: var(--cut-8);
+}
+.glyphgrid button.on { border-color: var(--earn); color: var(--earn); background: var(--earn-glow); }
+
+/* ============================================================
+   DASHBOARD — circular nodes
+   Three across on a 390px screen, so nine to twelve sit in one
+   screenful. The glyph carries identity, the ring carries state and
+   the hold charge, and the run rides the rim as a badge.
+   ============================================================ */
+.viewtog { display: flex; gap: 8px; margin-bottom: 14px; }
+.nodegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 16px 10px; }
+
+.node {
+  --edge: var(--struct-dim);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 0; background: none; border: 0;
+  color: var(--text-primary);
+  touch-action: pan-y;                 /* the board still scrolls under a hold */
+}
+.node .disc {
+  position: relative;
+  width: 100%; aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.node .ringsvg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  transform: rotate(-90deg);           /* the sweep starts at twelve o'clock */
+  overflow: visible;
+}
+.node .ringsvg circle { fill: none; stroke-width: 3; }
+.node .rbase { stroke: var(--edge); opacity: .55; }
+.node .rprog {
+  stroke: var(--earn);
+  stroke-dasharray: 289;
+  stroke-dashoffset: 289;              /* 2 * PI * 46, hidden at rest */
+  filter: drop-shadow(0 0 3px var(--earn-glow));
+}
+.node .nglyph { color: var(--edge); display: flex; }
+.node .nbadge {
+  position: absolute; right: -3px; bottom: -3px;
+  min-width: 24px; height: 24px; padding: 0 4px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-void); border: 1.5px solid var(--edge);
+  color: var(--text-primary);
+  font: 700 15px/1 var(--f-num);
+  clip-path: var(--cut-8);
+}
+.node .nbadge { font-size: 13px; }
+.node .nbadge.zero { color: var(--text-ghost); }
+.node .nbadge.done { color: var(--earn); border-color: var(--earn); font-family: var(--f-ui); }
+.node .nname {
+  font: 600 13px/1.25 var(--f-ui);
+  text-align: center; width: 100%;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.node .nmeta {
+  font: 600 13px/1 var(--f-ui); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-secondary); text-align: center;
+}
+.node .nmeta .risk { color: var(--risk); }
+
+.node.charging .rprog { animation: sweep 620ms linear forwards; }
+.node.charging .nglyph { color: var(--earn); animation: fx-jolt 620ms steps(3) 1; }
+.node.charging .nbadge { border-color: var(--earn); color: var(--earn); }
+@keyframes sweep { to { stroke-dashoffset: 0; } }
+
+.node.done { --edge: var(--earn); opacity: .5; }
+.node.done .rbase { opacity: 1; }
+.node.frac { --edge: var(--risk); }
+.node.frac .rbase { stroke-dasharray: 10 6; }
+.node.frac .nbadge { color: var(--risk); text-shadow: 1.5px 0 var(--struct-bright), -1.5px 0 var(--risk-deep); }
+.node.ext .rbase { stroke-dasharray: 4 6; --edge: var(--struct); }
+.node:disabled { opacity: .45; }
+
+/* ============================================================
+   HUD CHROME
+   ============================================================ */
+.hud {
+  position: relative;
+  padding: 14px 14px 12px;
+  margin-bottom: 16px;
+  background:
+    linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box,
+    linear-gradient(120deg, var(--struct-dim), var(--line-weak) 45%, var(--struct-dim)) border-box;
+  border: 1.5px solid transparent;
+  box-shadow: inset 0 1px 0 var(--edge-hi);
+  clip-path: var(--cut-16);
+}
+.hud .micro { position: absolute; top: 6px; right: 12px; }
+
 /* --- accessibility. Functional transitions stay; theatre stops. --- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; }
@@ -566,7 +739,7 @@ textarea { min-height: 76px; resize: vertical; }
 <body>
 
 <header class="topbar">
-  <div class="wordmark">Night City OS</div>
+  <div class="wordmark">Cyber-Tracker</div>
   <div class="topmeta">
     <span id="topdate"></span>
     <span class="micro" id="topmicro"></span>
@@ -836,6 +1009,158 @@ const DEFAULT_META = {
   records: {}
 };
 
+/* ============================================================
+   GLYPHS — 100 marks, drawn on one 24px grid.
+   Uniform stroke weight, square caps, mitre joins, no fills. They
+   inherit currentColor so a glyph picks up the attribute colour,
+   the earned yellow or the at-risk red without any per-icon work.
+   Categories exist for the picker's filter, nothing else.
+   ============================================================ */
+const GLYPH_CATS = [
+  { id: "chrome",  name: "Chrome" },
+  { id: "net",     name: "Net" },
+  { id: "combat",  name: "Combat" },
+  { id: "vehicle", name: "Transit" },
+  { id: "chem",    name: "Chem" },
+  { id: "tech",    name: "Tech" },
+  { id: "city",    name: "City" },
+  { id: "body",    name: "Body" },
+  { id: "mind",    name: "Mind" }
+];
+
+const GLYPHS = [
+  /* --- chrome: cyberware and body modification --- */
+  { i: "optic",     c: "chrome", n: "Optic implant",  d: "M3 12h3M18 12h3|M7 12a5 5 0 0 1 10 0 5 5 0 0 1-10 0|M12 10v4" },
+  { i: "cyberarm",  c: "chrome", n: "Cyber arm",      d: "M6 4h5v6l4 3v7h-4v-4l-5-3z|M8 7h1" },
+  { i: "spine",     c: "chrome", n: "Spinal rig",     d: "M12 3v18|M9 6h6M9 10h6M9 14h6M9 18h6" },
+  { i: "port",      c: "chrome", n: "Neural port",    d: "M8 4h8v5l-2 2v9h-4v-9l-2-2z|M10 6h4" },
+  { i: "dermal",    c: "chrome", n: "Dermal plate",   d: "M4 8l8-4 8 4v6l-8 4-8-4z|M8 10h8M12 8v8" },
+  { i: "jack",      c: "chrome", n: "Data jack",      d: "M10 3h4v6h3v6l-5 6-5-6V9h3z" },
+  { i: "heart",     c: "chrome", n: "Synth heart",    d: "M12 20s-7-4-7-9a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5-7 9-7 9z|M8 11h2l1-2 1 4 1-2h2" },
+  { i: "cyberleg",  c: "chrome", n: "Cyber leg",      d: "M9 3h5v8l2 4-1 6h-4l1-5-3-4z|M10 6h3" },
+  { i: "mantis",    c: "chrome", n: "Mantis blade",   d: "M4 20l8-8 3 3|M14 4l6 6-4 1-3-3z" },
+  { i: "lung",      c: "chrome", n: "Synth lung",     d: "M12 4v8|M12 8c-4 0-6 3-6 6v4h4v-6|M12 8c4 0 6 3 6 6v4h-4v-6" },
+  { i: "skullchip", c: "chrome", n: "Skull chip",     d: "M6 10a6 6 0 0 1 12 0v5H6z|M9 20h6|M14 5h5v4" },
+  { i: "subdermal", c: "chrome", n: "Subdermal",      d: "M4 12h5l2-5 3 10 2-5h4|M4 18h16" },
+
+  /* --- net: netrunning and intrusion --- */
+  { i: "daemon",    c: "net", n: "Daemon",        d: "M6 6h12v12H6z|M9 10h2M13 10h2|M9 15h6" },
+  { i: "ice",       c: "net", n: "ICE",           d: "M4 8h16v10H4z|M4 13h16M9 8v10M15 8v10|M12 4v4" },
+  { i: "breach",    c: "net", n: "Breach",        d: "M4 12h5l2-5 3 10 2-5h4|M12 3v3M12 18v3" },
+  { i: "shard",     c: "net", n: "Data shard",    d: "M12 3l7 5-3 12H8L5 8z|M12 8v8" },
+  { i: "terminal",  c: "net", n: "Terminal",      d: "M3 5h18v14H3z|M6 9l3 3-3 3|M12 15h6" },
+  { i: "uplink",    c: "net", n: "Uplink",        d: "M12 21V9|M5 9l7-6 7 6|M8 13h8" },
+  { i: "firewall",  c: "net", n: "Firewall",      d: "M4 6h16v12H4z|M4 12h16M8 6v6M16 6v6M12 12v6" },
+  { i: "virus",     c: "net", n: "Virus",         d: "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z|M12 2v4M12 18v4M2 12h4M18 12h4|M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2" },
+  { i: "node",      c: "net", n: "Node",          d: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z|M12 3v6M12 15v6M3 12h6M15 12h6" },
+  { i: "packet",    c: "net", n: "Packet",        d: "M4 8l8-4 8 4v8l-8 4-8-4z|M12 20V12M4 8l8 4 8-4" },
+  { i: "quickhack", c: "net", n: "Quickhack",     d: "M13 3L5 14h5l-1 7 8-11h-5z" },
+  { i: "blackwall", c: "net", n: "Blackwall",     d: "M4 4h16v16H4z|M4 9h16M4 14h16M9 4v16M15 4v16" },
+
+  /* --- combat --- */
+  { i: "pistol",   c: "combat", n: "Pistol",      d: "M3 7h15v4h-5l-1 3H9l-1-3H3z|M8 14l-2 6h3l2-6" },
+  { i: "rifle",    c: "combat", n: "Rifle",       d: "M2 10h20v2H2z|M6 12v3h3|M15 6h4v4|M9 12l-2 6" },
+  { i: "katana",   c: "combat", n: "Katana",      d: "M20 3l-11 11-3 3|M6 17l-3 4 4-3|M16 4l4 4" },
+  { i: "knuckles", c: "combat", n: "Knuckles",    d: "M4 8h16v4a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z|M7 8V5M11 8V5M15 8V5|M9 11h1M13 11h1" },
+  { i: "grenade",  c: "combat", n: "Grenade",     d: "M12 8a6 6 0 1 0 0 12 6 6 0 0 0 0-12z|M10 4h4v4h-4z|M14 5l4-2" },
+  { i: "turret",   c: "combat", n: "Turret",      d: "M6 16h12v4H6z|M9 16v-4h6v4|M12 12V6h8" },
+  { i: "shield",   c: "combat", n: "Shield",      d: "M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z|M9 12l2 2 4-4" },
+  { i: "reticle",  c: "combat", n: "Reticle",     d: "M12 3v5M12 16v5M3 12h5M16 12h5|M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" },
+  { i: "ammo",     c: "combat", n: "Ammo",        d: "M8 4h8v6l-2 10h-4L8 10z|M8 10h8" },
+  { i: "holster",  c: "combat", n: "Holster",     d: "M7 4h10v8a5 5 0 0 1-10 0z|M10 4v6" },
+  { i: "dronegun", c: "combat", n: "Combat drone", d: "M4 5l4 5M20 5l-4 5|M8 10h8v6H8z|M10 16v3M14 16v3" },
+  { i: "sniper",   c: "combat", n: "Sniper",      d: "M2 11h13v2H2z|M15 9h3v6h-3z|M18 12h4|M6 13v4|M16 4v5" },
+
+  /* --- transit --- */
+  { i: "moto",   c: "vehicle", n: "Motorcycle", d: "M6 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z|M18 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z|M6 15l4-7h5l3 7|M9 8h5" },
+  { i: "car",    c: "vehicle", n: "Car",        d: "M3 15h18v4H3z|M5 15l3-6h8l3 6|M7 19v2M17 19v2" },
+  { i: "van",    c: "vehicle", n: "Van",        d: "M3 6h12v11H3z|M15 9h4l2 4v4h-6z|M7 17a2 2 0 1 0 0 4 2 2 0 0 0 0-4z|M17 17a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" },
+  { i: "drone",  c: "vehicle", n: "Drone",      d: "M9 9h6v6H9z|M4 5h4M4 19h4M16 5h4M16 19h4|M6 5v4l3 3M18 5v4l-3 3M6 19v-4l3-3M18 19v-4l-3-3" },
+  { i: "hover",  c: "vehicle", n: "Hovercar",   d: "M5 10h14l-2 5H7z|M3 19h18|M9 15v3M15 15v3" },
+  { i: "wheel",  c: "vehicle", n: "Wheel",      d: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z|M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z|M12 3v5M12 16v5M3 12h5M16 12h5" },
+  { i: "fuel",   c: "vehicle", n: "Fuel",       d: "M5 4h9v16H5z|M5 10h9|M14 8h3v8a2 2 0 0 0 2 2" },
+  { i: "road",   c: "vehicle", n: "Highway",    d: "M4 21L9 3h6l5 18|M12 6v3M12 12v3M12 18v3" },
+
+  /* --- chem and medical --- */
+  { i: "inhaler", c: "chem", n: "Inhaler",   d: "M8 4h6v5H8z|M6 9h10v11H6z|M9 13h4" },
+  { i: "syringe", c: "chem", n: "Syringe",   d: "M14 3l7 7|M18 7l-9 9-5 2 2-5 9-9z|M10 10l4 4" },
+  { i: "pill",    c: "chem", n: "Pill",      d: "M6 14L14 6a4 4 0 0 1 6 6l-8 8a4 4 0 0 1-6-6z|M10 10l4 4" },
+  { i: "vial",    c: "chem", n: "Vial",      d: "M9 3h6v5l3 10a3 3 0 0 1-3 4H9a3 3 0 0 1-3-4l3-10z|M7 15h10" },
+  { i: "medkit",  c: "chem", n: "Medkit",    d: "M3 8h18v12H3z|M9 8V5h6v3|M12 11v6M9 14h6" },
+  { i: "pulse",   c: "chem", n: "Vitals",    d: "M3 12h4l2-5 3 10 2-5h7" },
+  { i: "dna",     c: "chem", n: "Genome",    d: "M8 3c0 6 8 6 8 12v6|M16 3c0 6-8 6-8 12v6|M9 9h6M9 15h6" },
+  { i: "brain",   c: "chem", n: "Cortex",    d: "M12 5a4 4 0 0 0-4 4v1a3 3 0 0 0 0 6v3h8v-3a3 3 0 0 0 0-6V9a4 4 0 0 0-4-4z|M12 5v14" },
+  { i: "patch",   c: "chem", n: "Patch",     d: "M4 14L14 4l6 6L10 20z|M9 11l4 4" },
+  { i: "stim",    c: "chem", n: "Stim",      d: "M12 3v6M12 15v6|M8 9h8v6H8z|M4 12h4M16 12h4" },
+
+  /* --- tech --- */
+  { i: "chip",     c: "tech", n: "Chip",       d: "M7 7h10v10H7z|M10 3v4M14 3v4M10 17v4M14 17v4|M3 10h4M3 14h4M17 10h4M17 14h4" },
+  { i: "circuit",  c: "tech", n: "Circuit",    d: "M4 6h6v6h10|M8 12v8|M3 4h2v2H3z|M19 11h2v2h-2z" },
+  { i: "battery",  c: "tech", n: "Power cell", d: "M3 8h15v8H3z|M18 11h3v2h-3z|M6 11h6" },
+  { i: "antenna",  c: "tech", n: "Antenna",    d: "M12 21V10|M12 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6z|M6 20l4-6M18 20l-4-6" },
+  { i: "sat",      c: "tech", n: "Satellite",  d: "M9 3l6 6-6 6-6-6z|M15 15l6 6|M14 10l4 4-4 4-4-4" },
+  { i: "camera",   c: "tech", n: "Optics",     d: "M3 7h4l2-3h6l2 3h4v13H3z|M12 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" },
+  { i: "radar",    c: "tech", n: "Radar",      d: "M12 3a9 9 0 1 0 9 9|M12 8a4 4 0 1 0 4 4|M12 12l8-8" },
+  { i: "server",   c: "tech", n: "Server",     d: "M4 4h16v5H4z|M4 10h16v5H4z|M4 16h16v4H4z|M7 6h1M7 12h1M7 18h1" },
+  { i: "cable",    c: "tech", n: "Cable",      d: "M9 3v5M15 3v5|M7 8h10v3a5 5 0 0 1-10 0z|M12 16v5" },
+  { i: "gear",     c: "tech", n: "Gear",       d: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z|M12 2v3M12 19v3M2 12h3M19 12h3|M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" },
+  { i: "fab",      c: "tech", n: "Fabricator", d: "M6 3h12v5H6z|M3 8h18v8H3z|M6 16h12v5H6z|M9 19h6" },
+  { i: "wrench",   c: "tech", n: "Wrench",     d: "M15 3a5 5 0 0 0-4 8L4 18l2 2 7-7a5 5 0 0 0 6-6l-3 3-3-1-1-3z" },
+
+  /* --- city --- */
+  { i: "tower",   c: "city", n: "Spire",       d: "M8 21V6l4-3 4 3v15z|M8 10h8M8 14h8M8 18h8|M12 3V1" },
+  { i: "mega",    c: "city", n: "Megabuilding", d: "M3 21V9h7V3h11v18z|M6 12h1M6 16h1|M13 7h1M17 7h1M13 12h1M17 12h1M13 17h1M17 17h1" },
+  { i: "neon",    c: "city", n: "Neon sign",   d: "M4 4h16v10H4z|M8 8h8|M12 14v4M8 18h8" },
+  { i: "alley",   c: "city", n: "Alley",       d: "M4 21V4l6 3v14|M20 21V4l-6 3v14|M10 21v-6h4v6" },
+  { i: "market",  c: "city", n: "Market",      d: "M3 8l2-4h14l2 4|M4 8v13h16V8|M9 21v-7h6v7" },
+  { i: "corp",    c: "city", n: "Corporate",   d: "M4 21h16|M6 21V8l6-4 6 4v13|M10 21v-6h4v6" },
+  { i: "badge",   c: "city", n: "Badge",       d: "M12 3l7 3v6c0 5-3 7-7 9-4-2-7-4-7-9V6z|M9 12l2 2 4-4" },
+  { i: "gig",     c: "city", n: "Gig",         d: "M6 3h9l3 3v15H6z|M9 9h6M9 13h6M9 17h3" },
+  { i: "credchip", c: "city", n: "Credchip",   d: "M3 6h18v12H3z|M3 10h18|M6 14h4" },
+  { i: "vending", c: "city", n: "Vending",     d: "M5 3h14v18H5z|M8 6h3M8 9h3M8 12h3|M14 6h3v4h-3z|M8 16h8v3H8z" },
+  { i: "ramen",   c: "city", n: "Noodles",     d: "M3 10h18a9 9 0 0 1-18 0z|M8 6c0-2 2-2 2-4M13 6c0-2 2-2 2-4|M5 19h14" },
+  { i: "bar",     c: "city", n: "Bar",         d: "M4 4h16l-8 8v7|M8 19h8" },
+
+  /* --- body and training --- */
+  { i: "dumbbell", c: "body", n: "Weights",   d: "M3 9h2v6H3z|M19 9h2v6h-2z|M5 10h2v4H5z|M17 10h2v4h-2z|M7 12h10" },
+  { i: "run",      c: "body", n: "Run",       d: "M14 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4z|M8 21l3-6-2-4 1-3 4 2 3 3|M5 11l4-2" },
+  { i: "cycle",    c: "body", n: "Cycle",     d: "M5 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z|M19 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z|M9 15l3-7h4|M8 8h4" },
+  { i: "yoga",     c: "body", n: "Stretch",   d: "M12 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4z|M12 8v6|M6 11h12|M8 20l4-6 4 6" },
+  { i: "box",      c: "body", n: "Combat drill", d: "M6 9a5 5 0 0 1 10 0v3a4 4 0 0 1-4 4H9a3 3 0 0 1-3-3z|M16 10h2v4h-2|M8 16h7v4H8z" },
+  { i: "swim",     c: "body", n: "Swim",      d: "M3 18c2-2 4 0 6 0s4-2 6 0 4 0 6 0|M7 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z|M10 12l5-3 5 3" },
+  { i: "climb",    c: "body", n: "Climb",     d: "M12 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4z|M12 8v5l-4 8M12 13l4 8|M7 10h10" },
+  { i: "timer",    c: "body", n: "Timer",     d: "M12 6a8 8 0 1 0 0 16 8 8 0 0 0 0-16z|M12 10v4l3 2|M9 3h6" },
+  { i: "scale",    c: "body", n: "Metrics",   d: "M4 8h16v12H4z|M8 12h8|M12 4v4" },
+  { i: "hydrate",  c: "body", n: "Hydrate",   d: "M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z" },
+
+  /* --- mind --- */
+  { i: "book",     c: "mind", n: "Read",      d: "M4 4h7v16H4z|M13 4h7v16h-7z|M11 4v16" },
+  { i: "code",     c: "mind", n: "Code",      d: "M9 8l-5 4 5 4M15 8l5 4-5 4|M13 5l-2 14" },
+  { i: "music",    c: "mind", n: "Music",     d: "M9 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z|M12 15V4l8-2v11|M17 16a3 3 0 1 0 0-6" },
+  { i: "art",      c: "mind", n: "Create",    d: "M4 20h16|M6 20V9l6-5 6 5v11|M10 20v-5h4v5" },
+  { i: "meditate", c: "mind", n: "Meditate",  d: "M12 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4z|M12 9v5|M6 20c0-4 3-6 6-6s6 2 6 6z" },
+  { i: "sleep",    c: "mind", n: "Rest",      d: "M20 14a8 8 0 1 1-10-10 7 7 0 0 0 10 10z|M15 3h5l-5 5h5" },
+  { i: "sun",      c: "mind", n: "Daybreak",  d: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z|M12 2v3M12 19v3M2 12h3M19 12h3|M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" },
+  { i: "moon",     c: "mind", n: "Night",     d: "M20 14a8 8 0 1 1-10-10 7 7 0 0 0 10 10z" },
+  { i: "journal",  c: "mind", n: "Journal",   d: "M6 3h12v18H6z|M6 8h12|M9 12h6M9 16h4" },
+  { i: "chat",     c: "mind", n: "Contact",   d: "M4 5h16v11H9l-5 4z|M8 9h8M8 12h5" },
+  { i: "calendar", c: "mind", n: "Schedule",  d: "M4 6h16v15H4z|M4 11h16M8 3v5M16 3v5|M8 15h2M14 15h2" },
+  { i: "target",   c: "mind", n: "Objective", d: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z|M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z|M12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" }
+];
+
+const GLYPH_BY_ID = {};
+GLYPHS.forEach(g => { GLYPH_BY_ID[g.i] = g; });
+
+/* Renders a glyph at whatever size the caller's CSS dictates. Falls
+   back to a neutral mark so a contract saved before the library
+   existed, or one carrying a stray emoji, still draws something. */
+function glyphSVG(id, cls) {
+  const g = GLYPH_BY_ID[id];
+  const paths = g ? g.d.split("|") : ["M5 5h14v14H5z", "M9 12h6"];
+  return '<svg class="gl ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' +
+    paths.map(p => '<path d="' + p + '"/>').join("") + "</svg>";
+}
+
 const TIERS = ["trivial", "standard", "demanding", "major"];
 /* Display order only. ISO week numbering, the log:YYYY-Www keys and
    n_per_week period boundaries stay Monday-based regardless — those
@@ -923,6 +1248,8 @@ const state = {
   logs: new Map(),        // weekKey -> array of completion records
   view: "board",
   configTab: "contracts",
+  glyphOpen: false,
+  glyphCat: "all",
   trainTab: "today",
   planDay: null,
   pickEx: false,
@@ -1674,6 +2001,7 @@ function paintPersistState() {
 
 function applyAmbient() {
   document.body.dataset.ambient = state.cfg && state.cfg.AMBIENT ? "1" : "0";
+  document.body.dataset.theme = (state.cfg && state.cfg.THEME) || "nightcity";
 }
 
 function reducedMotion() {
@@ -2029,16 +2357,20 @@ async function renderBoard() {
     else if (ev.dueToday) pending.push(h);
   });
 
+  const grid = boardView() === "grid";
   let html = statsBar();
 
   if (progression().todayPerfect) {
     html += '<div class="fullclear">FULL CLEAR</div>';
   }
 
+  html += viewToggle();
   html += '<div class="sechead">TODAY — ' + pending.length + " OPEN</div>";
 
   if (!pending.length) {
     html += '<p class="empty">All contracts cleared.</p>';
+  } else if (grid) {
+    html += '<div class="nodegrid">' + pending.map(h => node(h, evals.get(h.id), false)).join("") + "</div>";
   } else {
     html += pending.map(h => card(h, evals.get(h.id), false)).join("");
   }
@@ -2047,7 +2379,9 @@ async function renderBoard() {
 
   if (cleared.length) {
     html += '<div class="sechead">CLEARED — ' + cleared.length + "</div>";
-    html += cleared.map(h => card(h, evals.get(h.id), true)).join("");
+    html += grid
+      ? '<div class="nodegrid">' + cleared.map(h => node(h, evals.get(h.id), true)).join("") + "</div>"
+      : cleared.map(h => card(h, evals.get(h.id), true)).join("");
   }
 
   view.innerHTML = html;
@@ -2070,11 +2404,13 @@ function renderRetro(idx, active) {
   groups.forEach(g => {
     html += '<div class="retrodate">' + prettyDate(g.date) + "</div>";
     html += g.habits.map(h =>
-      '<div class="card">' +
-        '<div class="body">' +
-          '<div class="name">' + (h.icon ? esc(h.icon) + " " : "") + esc(h.name) + "</div>" +
-          '<div class="meta">' + esc(attrName(h.attrId)) + " &nbsp; " +
-            '<span class="xp">' + xpFor(h) + " XP</span></div>" +
+      '<div class="card" style="--edge:' + attrColour(h.attrId) + '">' +
+        '<div class="body glyphrow">' +
+          '<span class="cardglyph">' + glyphSVG(h.icon) + '</span><span class="grow">' +
+            '<div class="name">' + esc(h.name) + "</div>" +
+            '<div class="meta">' + esc(attrName(h.attrId)) + " &nbsp; " +
+              '<span class="xp">' + xpFor(h) + " XP</span></div>" +
+          "</span>" +
         "</div>" +
         '<div class="side"><button class="btn small" data-action="retro" data-id="' +
           h.id + '" data-date="' + g.date + '">LOG</button></div>' +
@@ -2094,7 +2430,8 @@ function statsBar() {
   const p = progression();
   const c = p.char;
   const pct = c.span > 0 ? Math.max(0, Math.min(100, (c.into / c.span) * 100)) : 100;
-  return '<div class="stats">' +
+  return '<div class="hud"><span class="micro">' + microFor("hud") + "</span>" +
+    '<div class="stats">' +
       '<div><div class="lv tnum">' + tnum(c.level) + "</div>" +
         '<div class="muted">LEVEL · <span id="xp-total" class="tnum">' + tnum(p.totalXP) + "</span> XP</div></div>" +
       '<div class="sc">STREET CRED ' + p.scBar.level + "<br>" + titleFor(p.scBar.level) +
@@ -2103,7 +2440,7 @@ function statsBar() {
     '<div class="bar"><i id="xp-bar" style="width:' + pct.toFixed(1) + '%"></i></div>' +
     '<div class="muted">' +
       (c.atCap ? "MAX LEVEL" : Math.max(0, c.span - c.into) + " XP TO LEVEL " + (c.level + 1)) +
-    "</div>";
+    "</div></div>";
 }
 
 /* Completion feedback, the moment the whole app exists for:
@@ -2149,6 +2486,130 @@ function showOverlay(kicker, big, sub, perkNames) {
   fx(ov.querySelector(".inner"), "sweep", 700);
 }
 
+/* --- board view toggle --------------------------------------- */
+function boardView() {
+  return state.cfg && state.cfg.BOARD_VIEW === "list" ? "list" : "grid";
+}
+
+function viewToggle() {
+  return '<div class="viewtog">' +
+    '<button class="btn small' + (boardView() === "grid" ? " primary" : "") + '" data-action="bview" data-v="grid">DASHBOARD</button>' +
+    '<button class="btn small' + (boardView() === "list" ? " primary" : "") + '" data-action="bview" data-v="list">LIST</button>' +
+    "</div>";
+}
+
+function tierChip(h) {
+  return h.tier.slice(0, 3).toUpperCase();
+}
+
+/* A dashboard node. Circular, compact enough to fit nine or ten in
+   one screen, with the glyph carrying the identity and the run as a
+   badge on the rim. The hold charge sweeps the ring itself, which is
+   why a circle beats the old square: the dash animation is uniform
+   the whole way round.
+
+   Ring circumference at r=46 is 2*PI*46 = 289.03, which is where the
+   dasharray below comes from. */
+function node(h, ev, isDone) {
+  const p = progression();
+  const cls = "node" + (isDone ? " done" : "") + (h.external ? " ext" : "") +
+    (ev.state === "fractured" ? " frac" : "");
+  const edge = (!isDone && !h.external && ev.state !== "fractured")
+    ? ' style="--edge:' + attrColour(h.attrId) + '"' : "";
+
+  return '<button class="' + cls + '"' + edge +
+      ' data-action="' + (isDone ? "undo" : "hold") + '" data-id="' + h.id + '"' +
+      (h.external ? " disabled" : "") + ">" +
+      '<span class="disc">' +
+        '<svg class="ringsvg" viewBox="0 0 100 100" aria-hidden="true">' +
+          '<circle class="rbase" cx="50" cy="50" r="46"/>' +
+          '<circle class="rprog" cx="50" cy="50" r="46"/>' +
+        "</svg>" +
+        '<span class="nglyph">' + glyphSVG(h.icon, "big") + "</span>" +
+        (isDone
+          ? '<span class="nbadge done">&#10003;</span>'
+          : '<span class="nbadge tnum' + (ev.run ? "" : " zero") + '">' + tnum(ev.run) + "</span>") +
+      "</span>" +
+      '<span class="nname">' + esc(h.name) + "</span>" +
+      '<span class="nmeta">' +
+        (ev.state === "fractured" ? '<span class="risk">DEGRADED</span>' : tierChip(h)) +
+      "</span>" +
+    "</button>";
+}
+
+/* --- hold to clear -------------------------------------------
+   pointerdown starts the charge, and anything that interrupts it —
+   lifting, dragging to scroll, the browser cancelling the gesture —
+   aborts cleanly. The commit only fires if the hold survives. */
+const HOLD_MS = 620;
+let holdTimer = null, holdEl = null, holdStart = null;
+
+function cancelHold() {
+  clearTimeout(holdTimer);
+  holdTimer = null;
+  if (holdEl) holdEl.classList.remove("charging");
+  holdEl = null;
+  holdStart = null;
+}
+
+function beginHold(el, ev) {
+  if (el.disabled) return;
+  cancelHold();
+  holdEl = el;
+  holdStart = { x: ev.clientX, y: ev.clientY };
+  el.classList.add("charging");
+  haptic(8);
+  holdTimer = setTimeout(() => {
+    const target = holdEl;
+    cancelHold();
+    if (target) commitHold(target);
+  }, reducedMotion() ? 200 : HOLD_MS);
+}
+
+async function commitHold(el) {
+  haptic(28);
+  fx(el, "jolt", 320);
+  await completeHabit(el.dataset.id, state.today, "manual");
+}
+
+document.addEventListener("pointerdown", function (ev) {
+  const el = ev.target.closest('[data-action="hold"]');
+  if (el) beginHold(el, ev);
+});
+document.addEventListener("pointerup", cancelHold);
+document.addEventListener("pointercancel", cancelHold);
+document.addEventListener("pointermove", function (ev) {
+  if (!holdStart) return;
+  // A drag means they meant to scroll the board, not clear a contract.
+  if (Math.abs(ev.clientX - holdStart.x) > 12 || Math.abs(ev.clientY - holdStart.y) > 12) cancelHold();
+});
+
+/* --- glyph picker --------------------------------------------- */
+function glyphName(id) {
+  const g = GLYPH_BY_ID[id];
+  return g ? g.n : "No glyph";
+}
+
+function glyphPicker(selected) {
+  const cat = state.glyphCat;
+  const list = cat === "all" ? GLYPHS : GLYPHS.filter(g => g.c === cat);
+
+  let html = '<div class="glyphcats">' +
+    '<button data-action="gcat" data-c="all" class="' + (cat === "all" ? "on" : "") + '">ALL</button>' +
+    GLYPH_CATS.map(c =>
+      '<button data-action="gcat" data-c="' + c.id + '" class="' + (cat === c.id ? "on" : "") + '">' +
+        c.name.toUpperCase() + "</button>"
+    ).join("") + "</div>";
+
+  html += '<div class="glyphgrid">' + list.map(g =>
+    '<button data-action="gpick" data-g="' + g.i + '" class="' + (g.i === selected ? "on" : "") + '"' +
+      ' title="' + esc(g.n) + '">' + glyphSVG(g.i) + "</button>"
+  ).join("") + "</div>";
+
+  html += '<div class="btnrow"><button class="btn" data-action="gclose">DONE</button></div>';
+  return html;
+}
+
 function card(h, ev, isDone) {
   const p = progression();
   const cls = "card" + (isDone ? " done" : "") + (h.external ? " ext" : "") +
@@ -2171,12 +2632,13 @@ function card(h, ev, isDone) {
   if (h.external) bits.push('<span class="flag">EXTERNAL</span>');
 
   const body =
-    '<button class="body" data-action="' + (isDone ? "noop" : "complete") + '"' +
+    '<button class="body glyphrow" data-action="' + (isDone ? "noop" : "complete") + '"' +
     ' data-id="' + h.id + '"' + (h.external ? " disabled" : "") + ">" +
+      '<span class="cardglyph">' + glyphSVG(h.icon) + "</span><span class=\"grow\">" +
       '<div class="name">' + (isDone ? '<span class="glyph">&#10003;</span> ' : "") +
-        (h.icon ? esc(h.icon) + " " : "") + esc(h.name) + "</div>" +
+        esc(h.name) + "</div>" +
       '<div class="meta">' + bits.join(" &nbsp; ") +
-        ' &nbsp; <span class="micro">' + microFor(h.id) + "</span></div>" +
+        ' &nbsp; <span class="micro">' + microFor(h.id) + "</span></div></span>" +
     "</button>";
 
   const side = isDone
@@ -2228,9 +2690,10 @@ function renderContracts() {
   } else {
     html += active.map((h, i) =>
       '<div class="panel" style="border-left:2px solid ' + attrColour(h.attrId) + '">' +
-        '<div class="row">' +
+        '<div class="row glyphrow">' +
+          '<span class="cardglyph">' + glyphSVG(h.icon) + "</span>" +
           '<div class="grow">' +
-            '<div class="name">' + (h.icon ? esc(h.icon) + " " : "") + esc(h.name) + "</div>" +
+            '<div class="name">' + esc(h.name) + "</div>" +
             '<div class="muted">' + esc(attrName(h.attrId)) + " · " + esc(h.tier.toUpperCase()) +
               " · " + xpFor(h) + " XP · " + esc(cadenceLabel(h)) +
               (h.external ? " · EXTERNAL" : "") + "</div>" +
@@ -2272,8 +2735,12 @@ function renderEditor() {
   html += "<label>NAME</label>" +
     '<input type="text" id="f-name" value="' + esc(e.name) + '" placeholder="Morning run" autocomplete="off">';
 
-  html += "<label>ICON</label>" +
-    '<input type="text" id="f-icon" value="' + esc(e.icon) + '" placeholder="Optional glyph or emoji" maxlength="4">';
+  html += "<label>GLYPH</label>";
+  html += '<div class="glyphsel">' + glyphSVG(e.icon, "big") +
+    '<div class="grow"><div class="name">' + esc(glyphName(e.icon)) + "</div>" +
+    '<div class="muted">' + (GLYPHS.length) + " AVAILABLE</div></div>" +
+    '<button class="btn small" data-action="gopen">' + (state.glyphOpen ? "CLOSE" : "CHANGE") + "</button></div>";
+  if (state.glyphOpen) html += glyphPicker(e.icon);
 
   html += '<label>ATTRIBUTE</label><select id="f-attr">' +
     state.attrs.filter(a => !a.archived).map(a =>
@@ -2374,7 +2841,14 @@ function renderSettings() {
 
   html += '<div class="checkline"><input type="checkbox" id="f-ambient"' +
     (cfg.AMBIENT ? " checked" : "") + '><span>Ambient effects — scanlines and idle glitch</span></div>';
-  html += '<p class="muted">Off by default. Nothing animates while the app sits idle.</p>';
+  html += '<p class="muted">A blueprint grid and edge bloom. Static gradients — nothing animates while the app sits idle.</p>';
+
+  html += '<label>PALETTE</label><select id="f-theme">' +
+    [["nightcity", "Night City"], ["militech", "Militech"], ["netwatch", "NetWatch"],
+     ["arasaka", "Arasaka"], ["kangtao", "Kang Tao"]].map(o =>
+      '<option value="' + o[0] + '"' + (cfg.THEME === o[0] ? " selected" : "") + ">" + o[1] + "</option>"
+    ).join("") + "</select>";
+  html += '<p class="muted">Only the structure colour and the ground change. Earned stays yellow and at-risk stays red in every palette — those carry meaning.</p>';
 
   html += '<label>WEEK STARTS ON</label><select id="f-weekstart">' +
     [[0, "Sunday"], [1, "Monday"]].map(o =>
@@ -2448,7 +2922,7 @@ function blankHabit() {
     _isNew: true,
     id: null,
     name: "",
-    icon: "",
+    icon: "target",
     attrId: firstAttr ? firstAttr.id : null,
     cadence: { type: "daily" },
     tier: "standard",
@@ -2466,7 +2940,6 @@ function harvestEditor() {
   if (!e) return;
   const g = id => document.getElementById(id);
   if (g("f-name"))     e.name = g("f-name").value;
-  if (g("f-icon"))     e.icon = g("f-icon").value;
   if (g("f-attr"))     e.attrId = g("f-attr").value;
   if (g("f-tier"))     e.tier = g("f-tier").value;
   if (g("f-notes"))    e.notes = g("f-notes").value;
@@ -2674,12 +3147,35 @@ document.addEventListener("click", async function (ev) {
     await completeHabit(el.dataset.id, el.dataset.date, "backfill");
   } else if (a === "undo") {
     await undoCompletion(el.dataset.id, state.today);
+  } else if (a === "bview") {
+    state.cfg.BOARD_VIEW = el.dataset.v;
+    await Store.save("cfg", state.cfg);
+    render();
+  } else if (a === "gopen") {
+    harvestEditor();
+    state.glyphOpen = !state.glyphOpen;
+    render();
+  } else if (a === "gclose") {
+    harvestEditor();
+    state.glyphOpen = false;
+    render();
+  } else if (a === "gcat") {
+    harvestEditor();
+    state.glyphCat = el.dataset.c;
+    render();
+  } else if (a === "gpick") {
+    harvestEditor();
+    state.editing.icon = el.dataset.g;
+    state.glyphOpen = false;
+    haptic(8);
+    render();
   } else if (a === "new") {
     state.editing = blankHabit();
     render();
   } else if (a === "edit") {
     const h = getHabit(el.dataset.id);
     state.editing = JSON.parse(JSON.stringify(h));
+    state.glyphOpen = false;
     render();
   } else if (a === "archive") {
     await setArchived(el.dataset.id, true);
@@ -2761,6 +3257,13 @@ document.addEventListener("change", async function (ev) {
     else if (type === "n_per_month") state.editing.cadence = { type: type, n: old.n || 8 };
     else state.editing.cadence = { type: "daily" };
     render();
+  }
+
+  if (el.id === "f-theme") {
+    state.cfg.THEME = el.value;
+    await Store.save("cfg", state.cfg);
+    applyAmbient();
+    return;
   }
 
   if (el.id === "f-ambient") {
