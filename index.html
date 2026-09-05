@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>CYBER-TRACKER</title>
+<title>LIFE TRACKER</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#05060A">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Cyber-Tracker">
+<meta name="apple-mobile-web-app-title" content="Life Tracker">
 <style>
 /* ============================================================
    NIGHT CITY OS — visual layer
@@ -229,9 +229,7 @@ main.screen-in { animation: rise var(--t-screen) both; }
 }
 .card.done { --edge: var(--earn); opacity: .55; }
 .card.frac { --edge: var(--risk); }
-.card.ext  {
-  background: repeating-linear-gradient(var(--struct) 0 6px, transparent 6px 12px) left / 3px 100% no-repeat, var(--bg-panel);
-}
+.card.ext { border-left-style: dashed; }
 .card.flash { --edge: var(--earn); animation: edgeflash 320ms steps(2) 1; }
 @keyframes edgeflash { 0%, 100% { background-color: var(--bg-panel); } 50% { background-color: var(--bg-raised); } }
 
@@ -727,6 +725,208 @@ body[data-theme="kangtao"] {
 }
 .hud .micro { position: absolute; top: 6px; right: 12px; }
 
+
+/* ============================================================
+   PREMIUM LAYER
+   The base build followed Neo-Militarism — flat fills, hairline
+   borders, one z-plane. The reference deck is not austere: it is
+   layered, washed with light, framed, and dense with chrome. This
+   block overrides the flat treatment throughout.
+   ============================================================ */
+:root {
+  --wash-cool:   #0E2A2E66;
+  --wash-warm:   #2A101A4D;
+  --panel-top:   #FFFFFF0A;
+  --panel-mid:   #FFFFFF05;
+  --rail:        #1CB5A333;
+  --rail-hot:    #FCEE0A66;
+  --plate:       #0B0F15E6;
+  --hairline:    #FFFFFF14;
+  --gloss:       #FFFFFF33;
+  --shade-soft:  #00000059;
+  --shade-deep:  #00000073;
+}
+
+/* --- ground: never flat black ------------------------------- */
+body {
+  background:
+    radial-gradient(150% 55% at 50% 0%, var(--wash-cool), transparent 60%),
+    radial-gradient(120% 45% at 15% 100%, var(--wash-warm), transparent 65%),
+    var(--bg-void);
+  background-attachment: fixed;
+}
+
+/* --- page frame: dashed rails and corner brackets ----------- */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: 45; pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, var(--rail) 0 5px, transparent 5px 13px) left 2px top / 2px 100% no-repeat,
+    repeating-linear-gradient(to bottom, var(--rail) 0 5px, transparent 5px 13px) right 2px top / 2px 100% no-repeat,
+    linear-gradient(var(--struct), var(--struct)) left 6px top 6px / 14px 2px no-repeat,
+    linear-gradient(var(--struct), var(--struct)) left 6px top 6px / 2px 14px no-repeat,
+    linear-gradient(var(--struct), var(--struct)) right 6px bottom 6px / 14px 2px no-repeat,
+    linear-gradient(var(--struct), var(--struct)) right 6px bottom 6px / 2px 14px no-repeat;
+  opacity: .65;
+}
+
+.topbar, main, .navbar { position: relative; z-index: 1; }
+
+/* --- header: badge, wordmark, segmented readout ------------- */
+.topbar {
+  padding-top: calc(10px + env(safe-area-inset-top));
+  border-bottom: 0;
+  background: linear-gradient(180deg, var(--panel-top), transparent);
+}
+.brandrow { display: flex; align-items: center; gap: 12px; }
+.wordmark {
+  font-size: 26px;
+  background: linear-gradient(180deg, var(--text-primary) 45%, var(--text-secondary));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.segbar {
+  height: 4px; margin-top: 5px;
+  background:
+    repeating-linear-gradient(90deg, var(--struct) 0 14px, transparent 14px 18px) left / 55% 100% no-repeat,
+    repeating-linear-gradient(90deg, var(--line-weak) 0 14px, transparent 14px 18px);
+}
+
+/* the deck's stepped rule: a hairline that jogs down at the end */
+.steprule {
+  height: 14px; margin: 0 0 2px;
+  background: var(--struct-dim);
+  clip-path: polygon(
+    0 0, calc(100% - 62px) 0, calc(100% - 48px) 12.5px, 100% 12.5px,
+    100% 14px, calc(100% - 47px) 14px, calc(100% - 61px) 1.5px, 0 1.5px);
+}
+
+/* --- panels: translucent plate, lit top edge, corner cut ---- */
+.panel, .hud, .card, .perk, .exblock {
+  background:
+    linear-gradient(180deg, var(--panel-top), var(--panel-mid) 40%, transparent),
+    var(--plate);
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--struct);
+  box-shadow: 0 1px 0 var(--hairline) inset, 0 10px 24px var(--shade-soft);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+}
+.card {
+  border-left: 3px solid var(--edge);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+.hud { border-left-width: 3px; padding: 16px 16px 26px; }
+.hud::after {
+  content: "ARASAKA CONSUMER TECH · CC35 CERTIFIED";
+  position: absolute; left: 16px; bottom: 5px;
+  font: 400 10px/1 var(--f-ui); letter-spacing: .2em; color: var(--text-ghost);
+}
+
+/* --- section headers: leading blocks, stepped tail ---------- */
+.sechead {
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 0; padding-bottom: 0;
+  margin: 28px 0 12px;
+}
+.sechead::before {
+  content: ""; flex: none; width: 16px; height: 12px;
+  background:
+    linear-gradient(var(--struct), var(--struct)) left / 5px 100% no-repeat,
+    linear-gradient(var(--struct-dim), var(--struct-dim)) right / 8px 100% no-repeat;
+}
+.sechead::after {
+  content: ""; flex: 1; height: 12px; position: static;
+  background: var(--line-weak);
+  clip-path: polygon(0 5px, calc(100% - 28px) 5px, calc(100% - 16px) 0, 100% 0, 100% 12px, calc(100% - 3px) 12px, calc(100% - 3px) 2px, calc(100% - 15px) 6.5px, 0 6.5px);
+}
+
+/* --- buttons: lit gradient, cut corner ---------------------- */
+.btn {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  letter-spacing: .14em;
+}
+.btn.primary {
+  background:
+    linear-gradient(180deg, var(--gloss), transparent 55%) padding-box,
+    linear-gradient(var(--earn), var(--earn)) padding-box,
+    linear-gradient(var(--earn), var(--earn)) border-box;
+  box-shadow: 0 0 18px var(--earn-glow);
+}
+.tabs button.on { box-shadow: 0 0 16px var(--earn-glow); }
+
+/* --- dashboard nodes: gauge, not a plain circle ------------- */
+.node .rbase { stroke-width: 2; opacity: .4; }
+.node .rticks {
+  fill: none; stroke: var(--edge); stroke-width: 5;
+  stroke-dasharray: 1.5 8.6;                 /* 24 ticks around the rim */
+  opacity: .5;
+}
+.node .rinner { fill: none; stroke: var(--edge); stroke-width: 1; opacity: .25; }
+.node .rnotch { stroke: var(--edge); stroke-width: 2.5; }
+.node .disc::before {
+  content: ""; position: absolute; inset: 14%; pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--panel-top), transparent 70%);
+}
+.node.done .rticks { opacity: .8; }
+.node.charging .rticks { stroke: var(--earn); opacity: 1; }
+.node .nname { letter-spacing: .02em; }
+
+/* --- bars: lit, with a leading edge ------------------------- */
+.bar {
+  background: var(--bg-inset);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.bar i {
+  background: linear-gradient(90deg, var(--earn-dim), var(--earn));
+  box-shadow: 0 0 10px var(--earn-glow), 2px 0 0 var(--text-primary);
+}
+.bar.struct i { background: linear-gradient(90deg, var(--struct-dim), var(--struct-bright)); }
+
+/* --- calendar cells: plates, not flat squares --------------- */
+.day {
+  background: linear-gradient(180deg, var(--panel-top), transparent), var(--bg-panel);
+  border: 1px solid var(--hairline);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+}
+.day.has { border-color: var(--earn-dim); }
+
+/* --- navigation: lit rail, active chevron ------------------- */
+.navbar {
+  background: linear-gradient(180deg, var(--panel-top), transparent), var(--plate);
+  border-top: 1px solid var(--hairline);
+  box-shadow: 0 -10px 30px var(--shade-deep);
+}
+.navbar button.on {
+  background: linear-gradient(180deg, var(--earn-glow), transparent 60%);
+  box-shadow: inset 0 2px 0 var(--earn);
+  border-top-color: transparent;
+}
+.footstrip {
+  position: relative; z-index: 1;
+  padding: 5px 16px 6px;
+  text-align: center;
+  font: 400 10px/1.2 var(--f-ui); letter-spacing: .18em; text-transform: uppercase;
+  color: var(--text-ghost);
+  border-top: 1px solid var(--hairline);
+  background: linear-gradient(180deg, transparent, var(--panel-mid));
+}
+
+/* --- inputs: recessed, lit focus ---------------------------- */
+input[type=text], input[type=number], select, textarea {
+  background: linear-gradient(180deg, var(--shade-soft), transparent), var(--bg-inset);
+  box-shadow: inset 0 1px 0 var(--hairline);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+
+/* --- overlay: full theatre --------------------------------- */
+#overlay {
+  background:
+    radial-gradient(80% 50% at 50% 40%, var(--earn-glow), transparent 60%),
+    radial-gradient(120% 60% at 50% 0%, var(--wash-cool), transparent 60%),
+    var(--bg-void);
+}
+#overlay .big { text-shadow: 0 0 30px var(--earn-glow); }
+
 /* --- accessibility. Functional transitions stay; theatre stops. --- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; }
@@ -739,14 +939,22 @@ body[data-theme="kangtao"] {
 <body>
 
 <header class="topbar">
-  <div class="wordmark">Cyber-Tracker</div>
+  <div class="brandrow">
+    <div class="grow">
+      <div class="wordmark">Life Tracker</div>
+      <div class="segbar"></div>
+    </div>
+  </div>
   <div class="topmeta">
     <span id="topdate"></span>
     <span class="micro" id="topmicro"></span>
   </div>
+  <div class="steprule"></div>
 </header>
 
 <main id="view"></main>
+
+<div class="footstrip">Only CC35 certified operators may manipulate this device</div>
 
 <nav class="navbar" id="nav">
   <button data-action="nav" data-view="board">
@@ -2523,16 +2731,19 @@ function node(h, ev, isDone) {
       '<span class="disc">' +
         '<svg class="ringsvg" viewBox="0 0 100 100" aria-hidden="true">' +
           '<circle class="rbase" cx="50" cy="50" r="46"/>' +
+          '<circle class="rticks" cx="50" cy="50" r="39"/>' +
+          '<circle class="rinner" cx="50" cy="50" r="33"/>' +
+          '<line class="rnotch" x1="50" y1="0" x2="50" y2="8" transform="rotate(90 50 50)"/>' +
           '<circle class="rprog" cx="50" cy="50" r="46"/>' +
         "</svg>" +
         '<span class="nglyph">' + glyphSVG(h.icon, "big") + "</span>" +
-        (isDone
-          ? '<span class="nbadge done">&#10003;</span>'
-          : '<span class="nbadge tnum' + (ev.run ? "" : " zero") + '">' + tnum(ev.run) + "</span>") +
+        (isDone ? '<span class="nbadge done">&#10003;</span>' : "") +
       "</span>" +
       '<span class="nname">' + esc(h.name) + "</span>" +
       '<span class="nmeta">' +
-        (ev.state === "fractured" ? '<span class="risk">DEGRADED</span>' : tierChip(h)) +
+        (ev.state === "fractured"
+          ? '<span class="risk">DEGRADED</span>'
+          : (ev.run ? "RUN " + ev.run : tierChip(h))) +
       "</span>" +
     "</button>";
 }
@@ -3367,9 +3578,20 @@ async function boot() {
        gone nothing can satisfy such a contract, so it would sit
        permanently unclearable. Clearing the flag can only make days
        more complete, never less, so no XP is lost. */
-    let freed = false;
-    state.habits.forEach(h => { if (h.external) { h.external = false; freed = true; } });
-    if (freed) await Store.save("habits", state.habits);
+    let touched = false;
+    state.habits.forEach(h => {
+      if (h.external) { h.external = false; touched = true; }
+      /* Contracts created before the glyph library carry an empty icon
+         or a stray emoji, both of which fall back to a placeholder
+         square. Give them a real mark, spread across the set. */
+      if (!GLYPH_BY_ID[h.icon]) {
+        let n = 0;
+        for (let i = 0; i < h.id.length; i++) n = (n * 31 + h.id.charCodeAt(i)) >>> 0;
+        h.icon = GLYPHS[n % GLYPHS.length].i;
+        touched = true;
+      }
+    });
+    if (touched) await Store.save("habits", state.habits);
   }
 
   state.meta = await Store.load("meta");
