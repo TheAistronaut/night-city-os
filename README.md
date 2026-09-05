@@ -1,4 +1,4 @@
-# CYBER-TRACKER
+# LIFE TRACKER
 
 Personal gamified habit and training tracker. Single user, offline, no backend.
 
