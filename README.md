@@ -45,29 +45,6 @@ foreground. When one is ready it shows a RELOAD prompt rather than
 swapping code mid-tap. **If you skip step 2 the old version keeps
 serving from cache.**
 
-## Training
-
-Standalone. It shares the storage and the visual language with the rest
-of the app and nothing else — no XP, no contracts, no streaks. Logging a
-workout does not clear a contract.
-
-**PLAN** builds one exercise list per weekday, each with a name (Push,
-Legs, Rest), a set count and optional targets. COPY THIS DAY TO
-duplicates a day across the week. Exercises live in a library and
-declare what they measure: weight and reps, reps only, or time.
-
-**TODAY** shows that weekday's plan as a grid — one row per set, with
-boxes for weight and reps (or minutes and seconds) and a tick. The
-placeholder in each box is your target, or what you did last time, and
-ticking an empty box adopts it. Nothing is preloaded and no record is
-written until you actually touch something, so rest days stay out of the
-history.
-
-**HISTORY** lists past workouts and derives personal bests from them.
-
-Weight unit is set in CONFIG → SETTINGS. It is a label only; changing it
-does not convert numbers already logged.
-
 ## Backups
 
 CONFIG → DATA → DOWNLOAD JSON. Do it monthly.
