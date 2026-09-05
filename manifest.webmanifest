@@ -1,6 +1,6 @@
 {
-  "name": "NIGHT CITY OS",
-  "short_name": "Night City",
+  "name": "CYBER-TRACKER",
+  "short_name": "Cyber-Tracker",
   "description": "Personal gamified habit and training tracker.",
   "start_url": "./",
   "scope": "./",
