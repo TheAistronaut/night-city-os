@@ -45,6 +45,24 @@ foreground. When one is ready it shows a RELOAD prompt rather than
 swapping code mid-tap. **If you skip step 2 the old version keeps
 serving from cache.**
 
+## Training
+
+TRAINING → PLAN builds the exercise library. Each exercise declares what
+it measures — weight and reps, reps only, distance and time, or duration
+— so lifting, calisthenics, running and classes all work without a
+schema change. Routines are named groups of exercises.
+
+Nothing is preloaded. The repo is public, so no exercise or contract is
+hardcoded.
+
+A session in progress is written to storage on every change, so a locked
+phone or a reload mid-workout loses nothing.
+
+**Feeding XP.** Sessions do not award XP directly. Create a contract in
+CONFIG with the TRAINING flag set, point a routine at it, and finishing a
+session clears that contract at its tier value. Contracts flagged this
+way cannot be tapped by hand.
+
 ## Backups
 
 CONFIG → DATA → DOWNLOAD JSON. Do it monthly.
