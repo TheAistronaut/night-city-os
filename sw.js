@@ -7,7 +7,7 @@
    The fonts are inlined into index.html, so the shell is one document
    plus its icons. */
 
-const CACHE = "ncos-v4";
+const CACHE = "ncos-v5";
 
 const SHELL = [
   "./",
