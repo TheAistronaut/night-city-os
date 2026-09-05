@@ -2710,6 +2710,21 @@ function tierChip(h) {
   return h.tier.slice(0, 3).toUpperCase();
 }
 
+/* Compact cadence for the dashboard tile — the full label runs too
+   long for an 80px node. */
+function cadenceShort(h) {
+  const c = h.cadence || { type: "daily" };
+  if (c.type === "daily") return "DAILY";
+  if (c.type === "weekdays") {
+    const d = (c.days || []);
+    if (!d.length) return "NO DAYS";
+    return dayOrder().filter(x => d.indexOf(x) !== -1).map(x => DAY_LABEL[x][0]).join(" ");
+  }
+  if (c.type === "n_per_week") return (c.n || 1) + "\u00D7 / WK";
+  if (c.type === "n_per_month") return (c.n || 1) + "\u00D7 / MO";
+  return "";
+}
+
 /* A dashboard node. Circular, compact enough to fit nine or ten in
    one screen, with the glyph carrying the identity and the run as a
    badge on the rim. The hold charge sweeps the ring itself, which is
@@ -2743,7 +2758,7 @@ function node(h, ev, isDone) {
       '<span class="nmeta">' +
         (ev.state === "fractured"
           ? '<span class="risk">DEGRADED</span>'
-          : (ev.run ? "RUN " + ev.run : tierChip(h))) +
+          : esc(cadenceShort(h))) +
       "</span>" +
     "</button>";
 }
@@ -2975,7 +2990,7 @@ function renderEditor() {
   if (c.type === "weekdays") {
     html += '<div class="daypick" style="margin-top:10px">' +
       dayOrder().map(d =>
-        '<button data-action="day" data-day="' + d + '" class="' +
+        '<button data-action="wday" data-day="' + d + '" class="' +
         ((c.days || []).indexOf(d) !== -1 ? "on" : "") + '">' + DAY_LABEL[d].slice(0, 2) + "</button>"
       ).join("") + "</div>";
   }
@@ -3330,7 +3345,7 @@ document.addEventListener("click", async function (ev) {
     state.configTab = el.dataset.tab;
     state.editing = null;
     render();
-  } else if (a === "rtab") {  } else if (a === "rtab") {
+  } else if (a === "rtab") {
     state.recordsTab = el.dataset.tab;
     render();
   } else if (a === "month") {
@@ -3399,7 +3414,7 @@ document.addEventListener("click", async function (ev) {
   } else if (a === "cancel-habit") {
     state.editing = null;
     render();
-  } else if (a === "day") {
+  } else if (a === "wday") {
     harvestEditor();
     const d = Number(el.dataset.day);
     const days = state.editing.cadence.days || [];
