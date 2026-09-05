@@ -1,6 +1,6 @@
 {
-  "name": "CYBER-TRACKER",
-  "short_name": "Cyber-Tracker",
+  "name": "LIFE TRACKER",
+  "short_name": "Life Tracker",
   "description": "Personal gamified habit and training tracker.",
   "start_url": "./",
   "scope": "./",
