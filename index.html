@@ -460,9 +460,97 @@ textarea { min-height: 76px; resize: vertical; }
 }
 @keyframes slam { from { transform: scale(1.6); opacity: 0; } to { transform: none; opacity: 1; } }
 
-.setrow { display: flex; gap: 8px; align-items: stretch; margin: 8px 0 4px; }
-.setrow input { flex: 1; min-width: 0; font-family: var(--f-num); font-size: 15px; }
-.setrow .btn { flex: 0 0 auto; }
+/* --- workout grid --- */
+.woprog {
+  margin-bottom: 14px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-weak);
+  font: 600 13px/1 var(--f-ui); letter-spacing: .14em; text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.woprog span { font-family: var(--f-num); font-size: 15px; color: var(--earn); }
+
+.exblock {
+  background: var(--bg-panel);
+  border: 1.5px solid var(--line-weak);
+  clip-path: var(--cut-12);
+  padding: 13px 13px 4px;
+  margin-bottom: 14px;
+}
+.exblock.complete { border-color: var(--earn-dim); }
+.exhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.exname { font: 600 18px/1.2 var(--f-ui); }
+.exblock.complete .exname { color: var(--earn); }
+.exsub {
+  margin-top: 3px;
+  font: 600 13px/1.4 var(--f-ui); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.whead, .wrow { display: grid; gap: 6px; align-items: center; }
+.whead { margin: 12px 0 4px; }
+.wrow { margin-bottom: 6px; position: relative; }
+.gh { font: 600 13px/1 var(--f-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--struct); text-align: center; }
+.gn { font: 500 15px/1 var(--f-num); color: var(--text-secondary); text-align: center; }
+.gi {
+  width: 100%; min-height: 48px; padding: 8px 4px;
+  background: var(--bg-inset); border: 1.5px solid var(--line-weak);
+  color: var(--text-primary);
+  font: 500 17px/1 var(--f-num); text-align: center;
+  clip-path: var(--cut-8);
+  -moz-appearance: textfield;
+}
+.gi::-webkit-outer-spin-button, .gi::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.gi::placeholder { color: var(--text-ghost); }
+.wrow.done .gi { opacity: .45; }
+.gt {
+  min-height: 48px; width: 100%;
+  background: none; border: 1.5px solid var(--line-weak);
+  color: var(--text-ghost);
+  clip-path: var(--cut-8);
+  font-size: 20px; line-height: 1;
+  transition: color var(--t-tap), border-color var(--t-tap);
+}
+.gt.on { border-color: var(--earn); color: var(--earn); background: var(--earn-glow); }
+
+.pgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; margin-top: 10px; }
+.pgrid .gh { margin-bottom: 4px; }
+
+/* --- completion effects ---
+   Every one is a one-shot. Nothing loops, and all of it is disabled
+   under prefers-reduced-motion by the block further down. */
+@keyframes fx-sweep { from { transform: translateX(0); } to { transform: translateX(330%); } }
+.fx-sweep { position: relative; overflow: hidden; }
+.fx-sweep::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -45%; width: 45%;
+  background: linear-gradient(90deg, transparent, var(--earn-glow) 35%, var(--earn-glow) 65%, transparent);
+  animation: fx-sweep 500ms ease-out 1;
+  pointer-events: none;
+}
+
+@keyframes fx-jolt {
+  0%   { transform: none; }
+  20%  { transform: translateX(-3px) skewX(-1.5deg); }
+  45%  { transform: translateX(3px) skewX(1deg); }
+  70%  { transform: translateX(-1px); }
+  100% { transform: none; }
+}
+.fx-jolt { animation: fx-jolt 300ms steps(2) 1; }
+
+@keyframes fx-chroma {
+  0%, 100% { text-shadow: none; }
+  25% { text-shadow: 2px 0 var(--risk), -2px 0 var(--struct-bright); }
+  55% { text-shadow: -3px 0 var(--earn), 3px 0 var(--struct-bright); }
+  80% { text-shadow: 1px 0 var(--struct-bright); }
+}
+.fx-chroma { animation: fx-chroma 320ms steps(2) 1; }
+
+@keyframes fx-pop {
+  0%   { transform: scale(.72); }
+  55%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.fx-pop { animation: fx-pop 320ms cubic-bezier(.2,0,0,1) 1; }
+
 
 #update {
   position: fixed; left: 16px; right: 16px;
@@ -735,25 +823,11 @@ const DEFAULT_CFG = {
   SC_RUN_100: 300,
   WEEK_START_DAY: 0,
   AMBIENT: false,
-  WEIGHT_UNIT: "kg",
-  DISTANCE_UNIT: "km",
-  WORKOUT_BACKDATE_DAYS: 7,
-  /* Written once, on the first boot after TRAINING exists. External
-     contracts only count toward FULL CLEAR from this date onward —
-     before it they could not be satisfied, and counting them
-     retroactively would remove XP that was already earned. */
-  TRAINING_FROM: null
+  WEIGHT_UNIT: "lb",
+  UNIT_PATCH: false
 };
 
-/* Each exercise declares what it measures, so the module is not built
-   around a barbell. Lifting, calisthenics, running and classes all fit
-   without a schema change. */
-const EX_KINDS = [
-  { id: "weight_reps",   name: "Weight and reps",  fields: ["weight", "reps"] },
-  { id: "reps",          name: "Reps only",        fields: ["reps"] },
-  { id: "distance_time", name: "Distance and time", fields: ["distance", "minutes"] },
-  { id: "duration",      name: "Duration only",    fields: ["minutes"] }
-];
+
 
 /* Unlocked by any attribute reaching the given level. Once unlocked,
    permanently active — the unlocked set is stored in meta.perks and
@@ -884,11 +958,10 @@ const state = {
   view: "board",
   configTab: "contracts",
   exercises: [],
-  routines: [],
-  wlogs: new Map(),       // weekKey -> array of sessions
-  session: null,          // the session in progress, if any
-  trainTab: "session",
-  editRoutine: null,
+  plan: null,             // one exercise list per weekday
+  wlogs: new Map(),       // weekKey -> array of day records
+  trainTab: "today",
+  planDay: null,
   pickEx: false,
   recordsTab: "calendar",
   recordsMonth: null,      // ISO first-of-month currently on show
@@ -972,15 +1045,6 @@ async function completeHabit(habitId, dateISO, source) {
   if (source === "backfill") {
     if (backfillDates(new Date()).indexOf(dateISO) === -1) {
       toast("That occurrence is outside the " + backfillWindowHours() + "h window.", true);
-      return;
-    }
-  } else if (source === "workout") {
-    /* The session record is the evidence, so a workout is not held to
-       the LOG RETRO window — but it cannot be dated to the future, and
-       it cannot reach back indefinitely either. */
-    if (dateISO > state.today) return;
-    if (daysBetween(dateISO, state.today) > state.cfg.WORKOUT_BACKDATE_DAYS) {
-      toast("Sessions can only be dated within the last " + state.cfg.WORKOUT_BACKDATE_DAYS + " days.", true);
       return;
     }
   } else if (dateISO !== state.today) {
@@ -1427,14 +1491,10 @@ function hasPerk(id) { return ((state.meta && state.meta.perks) || []).indexOf(i
    date-scheduled cadences can — an n_per_week target belongs to its
    week, not to any one day inside it. */
 function scheduledOn(habit, dateISO) {
-  if (habit.archived) return false;
-  /* An external contract could not be satisfied before TRAINING
-     existed. Counting it retroactively would un-perfect past days and
-     take back XP already earned, so it only counts from that date. */
-  if (habit.external) {
-    const from = state.cfg.TRAINING_FROM;
-    if (!from || dateISO < from) return false;
-  }
+  /* TRAINING is a standalone module and does not clear contracts, so
+     nothing satisfies an external contract. They stay out of FULL
+     CLEAR rather than making a perfect day unreachable. */
+  if (habit.archived || habit.external) return false;
   if (habit.createdAt && dateISO < habit.createdAt) return false;
   const c = habit.cadence || { type: "daily" };
   if (c.type === "daily") return true;
@@ -1459,8 +1519,7 @@ function isPerfectWeek(monISO, idx, today) {
   if (addDays(monISO, 6) >= today) return false;
   let any = false;
   for (const h of state.habits) {
-    if (h.archived) continue;
-    if (h.external && (!state.cfg.TRAINING_FROM || monISO < state.cfg.TRAINING_FROM)) continue;
+    if (h.archived || h.external) continue;
     const c = h.cadence || { type: "daily" };
     if (c.type === "n_per_month") continue;         // spans weeks, cannot be judged weekly
     const dates = datesFor(idx, h.id);
@@ -1618,127 +1677,180 @@ async function syncPerks() {
 
 /* ============================================================
    5E. TRAINING
-   Everything here lives under the wk:* keys the functional brief
-   reserved. The module does not invent an XP economy: finishing a
-   session writes a completion with source "workout" against a
-   contract flagged external, and the existing tier ladder does the
-   rest. That is the whole integration surface.
+   Standalone. It shares the storage adapter, the ISO week keys and
+   the visual language, and nothing else — no XP, no contracts, no
+   streaks, no perks. A workout is a plan for a weekday plus a record
+   of what actually got done on a date.
    ============================================================ */
 
+const EX_KINDS = [
+  { id: "weight_reps", name: "Weight and reps", cols: ["weight", "reps"] },
+  { id: "reps",        name: "Reps only",       cols: ["reps"] },
+  { id: "duration",    name: "Time",            cols: ["min", "sec"] }
+];
+
+function colLabel(c) {
+  if (c === "weight") return state.cfg.WEIGHT_UNIT.toUpperCase();
+  if (c === "reps") return "REPS";
+  return c.toUpperCase();
+}
+
 function exKind(ex) {
-  return EX_KINDS.find(k => k.id === (ex && ex.kind)) || EX_KINDS[0];
+  return EX_KINDS.find(k => k.id === (ex && ex.kind)) || EX_KINDS[2];
 }
 
 function getExercise(id) { return state.exercises.find(x => x.id === id) || null; }
-function getRoutine(id)  { return state.routines.find(r => r.id === id) || null; }
-function exName(id) { const x = getExercise(id); return x ? x.name : "UNKNOWN"; }
+function exName(id) { const x = getExercise(id); return x ? x.name : "REMOVED"; }
 
-async function loadAllSessions() {
-  const keys = await Store.listKeys("wk:log:");
-  for (const k of keys) {
-    state.wlogs.set(k.slice(7), (await Store.load(k)) || []);
-  }
+/* --- the plan: one list of exercises per weekday --- */
+function blankPlan() {
+  const days = {};
+  for (let d = 0; d < 7; d++) days[d] = { name: "", items: [] };
+  return { days: days };
 }
 
-function allSessions() {
+function planFor(dow) {
+  if (!state.plan || !state.plan.days) state.plan = blankPlan();
+  if (!state.plan.days[dow]) state.plan.days[dow] = { name: "", items: [] };
+  return state.plan.days[dow];
+}
+
+async function savePlan() { await Store.save("wk:plan", state.plan); }
+
+/* --- day records, bucketed by ISO week like everything else --- */
+function dayRecord(dateISO) {
+  const rows = state.wlogs.get(isoWeekOf(dateISO)) || [];
+  return rows.find(r => r.date === dateISO) || null;
+}
+
+/* Built from the plan but never saved, so opening TRAINING on a rest
+   day or a day you skip does not litter the history with blanks. It
+   is written only once you actually touch something. */
+function virtualDay(dateISO) {
+  const dow = fromISO(dateISO).getDay();
+  const day = planFor(dow);
+  return {
+    date: dateISO,
+    dow: dow,
+    name: day.name || "",
+    virtual: true,
+    items: (day.items || []).map(it => ({
+      itemId: it.id,
+      exId: it.exId,
+      target: { sets: it.sets || 3, reps: it.reps || null, weight: it.weight || null, seconds: it.seconds || null },
+      sets: newSets(it.sets || 3)
+    }))
+  };
+}
+
+function newSets(n) {
+  const out = [];
+  for (let i = 0; i < n; i++) out.push({ done: false });
+  return out;
+}
+
+function currentDay(dateISO) { return dayRecord(dateISO) || virtualDay(dateISO); }
+
+/* Promotes today's virtual record into stored history on first touch. */
+async function materializeDay(dateISO) {
+  let rec = dayRecord(dateISO);
+  if (rec) return rec;
+  rec = virtualDay(dateISO);
+  delete rec.virtual;
+  const wk = isoWeekOf(dateISO);
+  if (!state.wlogs.has(wk)) state.wlogs.set(wk, (await Store.load("wk:log:" + wk)) || []);
+  state.wlogs.get(wk).push(rec);
+  await saveDay(dateISO);
+  return rec;
+}
+
+async function loadAllWorkouts() {
+  const keys = await Store.listKeys("wk:log:");
+  for (const k of keys) state.wlogs.set(k.slice(7), (await Store.load(k)) || []);
+}
+
+async function saveDay(dateISO) {
+  await Store.save("wk:log:" + isoWeekOf(dateISO), state.wlogs.get(isoWeekOf(dateISO)) || []);
+}
+
+/* Typing must not hit storage on every keystroke. */
+let daySaveTimer = null;
+function scheduleDaySave(dateISO) {
+  clearTimeout(daySaveTimer);
+  daySaveTimer = setTimeout(() => { saveDay(dateISO); }, 400);
+}
+
+function entryComplete(entry) {
+  return entry.sets.length > 0 && entry.sets.every(s => s.done);
+}
+
+function dayIsComplete(rec) {
+  return rec && rec.items.length > 0 && rec.items.every(entryComplete);
+}
+
+function doneCount(rec) {
+  return rec.items.filter(entryComplete).length;
+}
+
+/* --- history queries --- */
+function allDays() {
   let out = [];
   state.wlogs.forEach(rows => { out = out.concat(rows); });
   return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 }
 
-async function saveSessionsFor(weekKey) {
-  await Store.save("wk:log:" + weekKey, state.wlogs.get(weekKey) || []);
+function setText(exId, s) {
+  const k = exKind(getExercise(exId)).id;
+  if (k === "weight_reps") {
+    if (s.weight == null && s.reps == null) return "—";
+    return (s.weight != null ? s.weight + state.cfg.WEIGHT_UNIT : "BW") + " × " + (s.reps != null ? s.reps : "?");
+  }
+  if (k === "reps") return (s.reps != null ? s.reps : "?") + " reps";
+  const sec = s.seconds || 0;
+  return Math.floor(sec / 60) + ":" + pad(sec % 60);
 }
 
-/* --- the set line, rendered per measurement kind --- */
-function setLabel(set) {
-  const ex = getExercise(set.exId);
-  const k = exKind(ex).id;
-  const cfg = state.cfg;
-  if (k === "weight_reps") return (set.weight || 0) + cfg.WEIGHT_UNIT + " × " + (set.reps || 0);
-  if (k === "reps") return (set.reps || 0) + " reps";
-  if (k === "distance_time") return (set.distance || 0) + cfg.DISTANCE_UNIT + " · " + (set.minutes || 0) + " min";
-  return (set.minutes || 0) + " min";
+/* What was done last time — the number that matters mid-workout. */
+function lastPerformance(exId, beforeDate) {
+  for (const r of allDays()) {
+    if (r.date >= beforeDate) continue;
+    const e = (r.items || []).find(i => i.exId === exId);
+    if (!e) continue;
+    const done = e.sets.filter(s => s.done);
+    if (done.length) return { date: r.date, sets: done };
+  }
+  return null;
 }
 
-/* Personal bests, derived from the session log rather than stored —
-   the same rule the runs follow. */
+/* Personal bests are derived from the log, never stored. */
 function bestFor(exId) {
-  const ex = getExercise(exId);
-  const k = exKind(ex).id;
+  const k = exKind(getExercise(exId)).id;
   let best = null;
-  allSessions().forEach(s => {
-    (s.sets || []).forEach(set => {
-      if (set.exId !== exId) return;
-      const score =
-        k === "weight_reps"   ? (set.weight || 0) :
-        k === "reps"          ? (set.reps || 0) :
-        k === "distance_time" ? (set.distance || 0) :
-                                (set.minutes || 0);
-      if (!best || score > best.score) best = { score: score, set: set, date: s.date };
+  allDays().forEach(r => {
+    (r.items || []).forEach(e => {
+      if (e.exId !== exId) return;
+      e.sets.forEach(s => {
+        if (!s.done) return;
+        const score = k === "weight_reps" ? (s.weight || 0)
+                    : k === "reps" ? (s.reps || 0)
+                    : (s.seconds || 0);
+        if (score > 0 && (!best || score > best.score)) best = { score: score, set: s, date: r.date };
+      });
     });
   });
   return best;
 }
 
-/* What was done last time, which is the number that actually matters
-   while standing in front of the rack. */
-function lastTime(exId, excludeSessionId) {
-  for (const s of allSessions()) {
-    if (s.id === excludeSessionId) continue;
-    const sets = (s.sets || []).filter(x => x.exId === exId);
-    if (sets.length) return { date: s.date, sets: sets };
-  }
-  return null;
+function writeField(entry, si, field, raw) {
+  const v = raw === "" ? null : Number(raw);
+  const set = entry.sets[si];
+  if (v !== null && isNaN(v)) return;
+  if (field === "weight") set.weight = v;
+  else if (field === "reps") set.reps = v;
+  else if (field === "min") set.seconds = (v || 0) * 60 + ((set.seconds || 0) % 60);
+  else if (field === "sec") set.seconds = Math.floor((set.seconds || 0) / 60) * 60 + (v || 0);
 }
 
-function newSession(routineId) {
-  const r = routineId ? getRoutine(routineId) : null;
-  return {
-    id: makeId("s_"),
-    date: state.today,
-    routineId: routineId || null,
-    habitId: r && r.habitId ? r.habitId : null,
-    startedAt: new Date().toISOString(),
-    endedAt: null,
-    exIds: r ? (r.exIds || []).slice() : [],
-    sets: [],
-    notes: ""
-  };
-}
-
-async function persistActive() {
-  if (state.session) await Store.save("wk:active", state.session);
-  else await Store.drop("wk:active");
-}
-
-/* A session survives a reload, a locked phone or a crash mid-workout,
-   because it is written on every change rather than at the end. */
-async function finishSession() {
-  const s = state.session;
-  if (!s) return;
-  if (!s.sets.length) { toast("Nothing logged in this session.", true); return; }
-
-  s.endedAt = new Date().toISOString();
-  const wk = isoWeekOf(s.date);
-  if (!state.wlogs.has(wk)) state.wlogs.set(wk, (await Store.load("wk:log:" + wk)) || []);
-  state.wlogs.get(wk).push(s);
-  await saveSessionsFor(wk);
-
-  state.session = null;
-  await persistActive();
-
-  if (s.habitId) {
-    await completeHabit(s.habitId, s.date, "workout");     // renders and toasts
-  } else {
-    toast("Session logged. " + s.sets.length + " sets.");
-    render();
-  }
-}
-
-function externalContracts() {
-  return state.habits.filter(h => h.external && !h.archived);
-}
 /* ============================================================
    6. RENDER
    ============================================================ */
@@ -1955,11 +2067,11 @@ function radarSVG(attrs, p) {
 function renderTraining() {
   let html =
     '<div class="tabs">' +
-      ttab("session", "SESSION") + ttab("plan", "PLAN") + ttab("history", "HISTORY") +
+      ttab("today", "TODAY") + ttab("plan", "PLAN") + ttab("history", "HISTORY") +
     "</div>";
   html += state.trainTab === "plan" ? renderPlan()
         : state.trainTab === "history" ? renderTrainHistory()
-        : renderSession();
+        : renderWorkout();
   view.innerHTML = html;
 }
 
@@ -1968,129 +2080,174 @@ function ttab(id, label) {
     (state.trainTab === id ? "on" : "") + '">' + label + "</button>";
 }
 
-function renderSession() {
-  if (!state.session) {
-    let html = '<div class="sechead">START A SESSION</div>';
-    if (!state.exercises.filter(x => !x.archived).length) {
-      return html + '<p class="empty">No exercises yet. Build your library in PLAN first — an exercise is a name plus what it measures.</p>';
-    }
-    html += '<button class="btn primary full" data-action="sess-new" data-routine="">EMPTY SESSION</button>';
-    const routines = state.routines.filter(r => !r.archived);
-    if (routines.length) {
-      html += '<div class="sechead">ROUTINES</div>';
-      html += routines.map(r =>
-        '<div class="card" style="--edge:var(--struct)">' +
-          '<button class="body" data-action="sess-new" data-routine="' + r.id + '">' +
-            '<div class="name">' + esc(r.name) + "</div>" +
-            '<div class="meta">' + (r.exIds || []).length + " EXERCISES" +
-              (r.habitId ? ' &nbsp; <span class="flag">' + esc(habitNameOf(r.habitId)) + "</span>" : "") +
-            "</div>" +
-          "</button></div>"
-      ).join("");
-    }
-    const recent = allSessions()[0];
-    if (recent) {
-      html += '<div class="sechead">LAST SESSION</div>';
-      html += '<div class="panel"><div class="row"><div class="grow">' + esc(prettyDate(recent.date)) +
-        '</div><div class="muted">' + (recent.sets || []).length + " SETS</div></div></div>";
-    }
-    return html;
+/* --- the workout grid ---
+   This screen never re-renders while it is being used. Every input
+   writes straight into state and every tick updates the DOM in place,
+   because re-rendering mid-set would drop focus and wipe a half-typed
+   number in the middle of a working set. */
+function renderWorkout() {
+  const rec = currentDay(state.today);
+  const dow = fromISO(state.today).getDay();
+
+  let html = '<div class="sechead">' + DAY_LABEL[dow] + " · " +
+    esc(rec.name || planFor(dow).name || "UNNAMED") + "</div>";
+
+  if (!rec.items.length) {
+    return html + '<p class="empty">Nothing planned for ' + DAY_LABEL[dow] +
+      '. Open PLAN to build this day, or add something below.</p>' +
+      '<div class="btnrow"><button class="btn" data-action="wo-addex">+ ADD EXERCISE</button></div>';
   }
 
-  const s = state.session;
-  let html = '<div class="sechead">SESSION IN PROGRESS</div>';
+  html += '<div class="woprog"><span id="wo-count">' + doneCount(rec) + " / " + rec.items.length +
+    "</span> EXERCISES CLEARED</div>";
 
-  html += '<div class="panel"><div class="row"><div class="grow">' + esc(prettyDate(s.date)) + "</div>" +
-    '<div class="muted">' + s.sets.length + " SETS</div></div>";
-  html += "<label>SATISFIES CONTRACT</label><select id=\"f-sess-habit\" data-action=\"sess-habit\">" +
-    '<option value="">None — log only</option>' +
-    externalContracts().map(h =>
-      '<option value="' + h.id + '"' + (s.habitId === h.id ? " selected" : "") + ">" + esc(h.name) + "</option>"
-    ).join("") + "</select>";
-  if (!externalContracts().length) {
-    html += '<p class="muted">No external contracts exist. Create one in CONFIG with the TRAINING flag set to have sessions feed XP.</p>';
-  }
-  html += "</div>";
+  rec.items.forEach((entry, i) => {
+    const ex = getExercise(entry.exId);
+    const kind = exKind(ex);
+    const cols = kind.cols;
+    const tmpl = "32px " + cols.map(() => "1fr").join(" ") + " 52px";
+    const prev = lastPerformance(entry.exId, state.today);
 
-  s.exIds.forEach(exId => {
-    const ex = getExercise(exId);
-    if (!ex) return;
-    const sets = s.sets.filter(x => x.exId === exId);
-    const prev = lastTime(exId, s.id);
+    html += '<div class="exblock' + (entryComplete(entry) ? " complete" : "") + '" data-i="' + i + '">';
+    html += '<div class="exhead"><div class="exname">' + esc(ex ? ex.name : "REMOVED") + "</div>" +
+      '<div class="exsub">' + entry.sets.length + " SETS</div></div>";
 
-    html += '<div class="sechead">' + esc(ex.name) + "</div>";
-    if (prev) {
-      html += '<div class="muted">LAST · ' + esc(prev.date.slice(5)) + " · " +
-        prev.sets.map(setLabel).map(esc).join(" / ") + "</div>";
-    } else {
-      html += '<div class="muted">NO PRIOR RECORD</div>';
-    }
+    const tgt = entry.target || {};
+    const bits = [];
+    if (tgt.reps) bits.push("TARGET " + tgt.reps + " REPS");
+    if (tgt.weight) bits.push(tgt.weight + state.cfg.WEIGHT_UNIT);
+    if (prev) bits.push("LAST " + prev.date.slice(5) + " · " + prev.sets.map(s => setText(entry.exId, s)).join(" / "));
+    if (bits.length) html += '<div class="exsub">' + esc(bits.join(" · ")) + "</div>";
 
-    if (sets.length) {
-      html += sets.map((set, i) =>
-        '<div class="card" style="--edge:var(--earn)"><div class="body">' +
-          '<div class="name">' + esc(setLabel(set)) + "</div>" +
-          '<div class="meta">SET <span class="run">' + (i + 1) + "</span></div></div>" +
-          '<div class="side"><button class="btn small danger" data-action="set-del" data-ex="' + exId +
-            '" data-i="' + i + '">DROP</button></div></div>'
-      ).join("");
-    }
+    html += '<div class="whead" style="grid-template-columns:' + tmpl + '">' +
+      '<div class="gh">SET</div>' +
+      cols.map(c => '<div class="gh">' + colLabel(c) + "</div>").join("") +
+      '<div class="gh"></div></div>';
 
-    html += '<div class="setrow">' + exKind(ex).fields.map(f =>
-      '<input type="number" inputmode="decimal" step="any" min="0" class="in-' + f + '" data-ex="' + exId +
-        '" placeholder="' + fieldLabel(f).toUpperCase() + '">'
-    ).join("") +
-      '<button class="btn primary" data-action="set-add" data-ex="' + exId + '">ADD</button></div>';
+    entry.sets.forEach((set, si) => {
+      html += '<div class="wrow' + (set.done ? " done" : "") + '" style="grid-template-columns:' + tmpl + '">' +
+        '<div class="gn">' + (si + 1) + "</div>" +
+        cols.map(c => {
+          const val = fieldValue(set, c);
+          const ph = fieldTarget(entry, c, prev, si);
+          return '<input class="gi" inputmode="numeric" type="number" step="any" min="0"' +
+            ' data-i="' + i + '" data-s="' + si + '" data-f="' + c + '"' +
+            ' value="' + (val === null ? "" : val) + '"' +
+            ' placeholder="' + (ph === null ? "" : ph) + '">';
+        }).join("") +
+        '<button class="gt' + (set.done ? " on" : "") + '" data-action="set-done"' +
+          ' data-i="' + i + '" data-s="' + si + '" aria-label="Mark set complete">&#10003;</button>' +
+      "</div>";
+    });
+
+    html += '<div class="btnrow">' +
+      '<button class="btn small" data-action="set-add" data-i="' + i + '">+ SET</button>' +
+      '<button class="btn small danger" data-action="wo-drop" data-i="' + i + '">REMOVE</button>' +
+      "</div></div>";
   });
 
-  html += '<div class="sechead">EXERCISES</div>';
-  if (state.pickEx) {
-    html += state.exercises.filter(x => !x.archived && s.exIds.indexOf(x.id) === -1).map(x =>
-      '<button class="btn full" style="margin-bottom:8px" data-action="sess-addex" data-id="' + x.id + '">' +
-        esc(x.name) + "</button>"
-    ).join("") || '<p class="muted">Everything in the library is already in this session.</p>';
-    html += '<div class="btnrow"><button class="btn" data-action="pick-close">CANCEL</button></div>';
-  } else {
-    html += '<button class="btn full" data-action="pick-open">+ ADD EXERCISE</button>';
-  }
-
   html += '<div class="btnrow">' +
-    '<button class="btn primary" data-action="sess-finish">FINISH SESSION</button>' +
-    '<button class="btn danger" data-action="sess-abandon">ABANDON</button>' +
+    '<button class="btn" data-action="wo-addex">+ ADD EXERCISE</button>' +
+    '<button class="btn danger" data-action="wo-reset">RESET TO PLAN</button>' +
     "</div>";
+
+  if (state.pickEx) html += exercisePicker("wo-pick");
   return html;
 }
 
-function fieldLabel(f) {
-  const cfg = state.cfg;
-  return f === "weight" ? cfg.WEIGHT_UNIT
-    : f === "distance" ? cfg.DISTANCE_UNIT
-    : f === "minutes" ? "min" : "reps";
+function fieldValue(set, c) {
+  if (c === "weight") return set.weight == null ? null : set.weight;
+  if (c === "reps") return set.reps == null ? null : set.reps;
+  if (c === "min") return set.seconds == null ? null : Math.floor(set.seconds / 60);
+  if (c === "sec") return set.seconds == null ? null : set.seconds % 60;
+  return null;
 }
 
-function habitNameOf(id) { const h = getHabit(id); return h ? h.name : "UNKNOWN"; }
+/* Placeholder shows the target, or failing that what was done last
+   time — and tapping the tick with an empty box adopts it. */
+function fieldTarget(entry, c, prev, si) {
+  const t = entry.target || {};
+  if (c === "weight" && t.weight) return t.weight;
+  if (c === "reps" && t.reps) return t.reps;
+  if (prev && prev.sets.length) {
+    const ref = prev.sets[Math.min(si, prev.sets.length - 1)];
+    if (c === "weight" && ref.weight != null) return ref.weight;
+    if (c === "reps" && ref.reps != null) return ref.reps;
+    if (c === "min" && ref.seconds != null) return Math.floor(ref.seconds / 60);
+    if (c === "sec" && ref.seconds != null) return ref.seconds % 60;
+  }
+  if (c === "min" && t.seconds) return Math.floor(t.seconds / 60);
+  if (c === "sec" && t.seconds) return t.seconds % 60;
+  return null;
+}
 
-function renderPlan() {
-  let html = '<div class="sechead">ROUTINES</div>';
-  const routines = state.routines.filter(r => !r.archived);
-  html += routines.map(r =>
-    '<div class="panel">' +
-      '<div class="row"><input type="text" class="grow" data-routine="' + r.id + '" value="' + esc(r.name) + '">' +
-        '<button class="btn small danger" data-action="rt-archive" data-id="' + r.id + '">ARCHIVE</button></div>' +
-      '<div class="muted">' + ((r.exIds || []).map(exName).join(", ") || "NO EXERCISES") + "</div>" +
-      "<label>SATISFIES CONTRACT</label><select data-action=\"rt-habit\" data-id=\"" + r.id + "\">" +
-        '<option value="">None</option>' +
-        externalContracts().map(h =>
-          '<option value="' + h.id + '"' + (r.habitId === h.id ? " selected" : "") + ">" + esc(h.name) + "</option>"
-        ).join("") + "</select>" +
-      '<div class="btnrow"><button class="btn small" data-action="rt-edit" data-id="' + r.id + '">' +
-        (state.editRoutine === r.id ? "DONE" : "EDIT EXERCISES") + "</button></div>" +
-      (state.editRoutine === r.id ? routineExercisePicker(r) : "") +
-    "</div>"
+function exercisePicker(action) {
+  const lib = state.exercises.filter(x => !x.archived);
+  let html = '<div class="sechead">PICK AN EXERCISE</div>';
+  if (!lib.length) return html + '<p class="empty">The library is empty. Add one in PLAN.</p>';
+  html += lib.map(x =>
+    '<button class="btn full" style="margin-bottom:8px" data-action="' + action + '" data-id="' + x.id + '">' +
+      esc(x.name) + "</button>"
   ).join("");
+  return html + '<div class="btnrow"><button class="btn" data-action="pick-close">CANCEL</button></div>';
+}
+
+/* --- plan editor --- */
+function renderPlan() {
+  const sel = state.planDay == null ? fromISO(state.today).getDay() : state.planDay;
+  const day = planFor(sel);
+
+  let html = '<div class="daypick" style="margin-bottom:14px">' + dayOrder().map(d =>
+    '<button data-action="plan-day" data-day="' + d + '" class="' + (d === sel ? "on" : "") + '">' +
+      DAY_LABEL[d].slice(0, 2) + "</button>"
+  ).join("") + "</div>";
+
+  html += "<label>DAY NAME</label>";
+  html += '<input type="text" id="f-day-name" data-day="' + sel + '" value="' + esc(day.name || "") +
+    '" placeholder="Push, Legs, Rest…" autocomplete="off">';
+
+  html += '<div class="sechead">' + DAY_LABEL[sel] + " — " + day.items.length + " EXERCISES</div>";
+
+  if (!day.items.length) {
+    html += '<p class="empty">Empty day. Add exercises below, or leave it as a rest day.</p>';
+  }
+
+  html += day.items.map((it, i) => {
+    const ex = getExercise(it.exId);
+    const kind = exKind(ex);
+    return '<div class="panel">' +
+      '<div class="row"><div class="grow"><div class="exname">' + esc(ex ? ex.name : "REMOVED") + "</div>" +
+        '<div class="exsub">' + esc(kind.name.toUpperCase()) + "</div></div>" +
+        '<button class="btn small danger" data-action="pi-del" data-i="' + i + '">REMOVE</button></div>' +
+      '<div class="pgrid">' +
+        '<div><div class="gh">SETS</div><input class="gi" type="number" min="1" max="20" data-pi="' + i +
+          '" data-f="sets" value="' + (it.sets || 3) + '"></div>' +
+        (kind.id === "duration"
+          ? '<div><div class="gh">SECONDS</div><input class="gi" type="number" min="0" data-pi="' + i +
+              '" data-f="seconds" value="' + (it.seconds == null ? "" : it.seconds) + '" placeholder="60"></div>'
+          : '<div><div class="gh">REPS</div><input class="gi" type="number" min="0" data-pi="' + i +
+              '" data-f="reps" value="' + (it.reps == null ? "" : it.reps) + '" placeholder="8"></div>') +
+        (kind.id === "weight_reps"
+          ? '<div><div class="gh">' + colLabel("weight") + '</div><input class="gi" type="number" min="0" step="any" data-pi="' + i +
+              '" data-f="weight" value="' + (it.weight == null ? "" : it.weight) + '" placeholder="135"></div>'
+          : "") +
+      "</div>" +
+      '<div class="btnrow">' +
+        '<button class="btn small" data-action="pi-move" data-i="' + i + '" data-dir="-1"' + (i === 0 ? " disabled" : "") + ">UP</button>" +
+        '<button class="btn small" data-action="pi-move" data-i="' + i + '" data-dir="1"' + (i === day.items.length - 1 ? " disabled" : "") + ">DOWN</button>" +
+      "</div></div>";
+  }).join("");
+
   html += '<div class="btnrow">' +
-    '<button class="btn primary" data-action="rt-save">SAVE NAMES</button>' +
-    '<button class="btn" data-action="rt-new">+ NEW ROUTINE</button></div>';
+    '<button class="btn primary" data-action="plan-add">+ ADD EXERCISE</button>' +
+    '<button class="btn" data-action="plan-save">SAVE</button></div>';
+
+  if (state.pickEx) html += exercisePicker("plan-pick");
+
+  html += '<div class="sechead">COPY THIS DAY TO</div>';
+  html += '<div class="daypick">' + dayOrder().filter(d => d !== sel).map(d =>
+    '<button data-action="plan-copy" data-day="' + d + '">' + DAY_LABEL[d].slice(0, 2) + "</button>"
+  ).join("") + "</div>";
 
   html += '<div class="sechead">EXERCISE LIBRARY</div>';
   const lib = state.exercises.filter(x => !x.archived);
@@ -2099,53 +2256,47 @@ function renderPlan() {
   }
   html += lib.map(x => {
     const best = bestFor(x.id);
-    return '<div class="panel">' +
-      '<div class="row"><input type="text" class="grow" data-ex-name="' + x.id + '" value="' + esc(x.name) + '">' +
-        '<button class="btn small danger" data-action="ex-archive" data-id="' + x.id + '">ARCHIVE</button></div>' +
-      '<div class="muted">' + esc(exKind(x).name.toUpperCase()) +
-        (best ? " · BEST " + esc(setLabel(best.set)) + " · " + esc(best.date.slice(5)) : " · NO RECORD") + "</div>" +
-    "</div>";
+    return '<div class="panel"><div class="row">' +
+      '<input type="text" class="grow" data-ex-name="' + x.id + '" value="' + esc(x.name) + '">' +
+      '<button class="btn small danger" data-action="ex-archive" data-id="' + x.id + '">ARCHIVE</button></div>' +
+      '<div class="exsub">' + esc(exKind(x).name.toUpperCase()) +
+        (best ? " · BEST " + esc(setText(x.id, best.set)) + " · " + esc(best.date.slice(5)) : " · NO RECORD") +
+      "</div></div>";
   }).join("");
 
   html += "<label>NEW EXERCISE</label>";
   html += '<input type="text" id="f-ex-name" placeholder="Movement name" autocomplete="off">';
-  html += "<select id=\"f-ex-kind\">" + EX_KINDS.map(k =>
+  html += '<select id="f-ex-kind">' + EX_KINDS.map(k =>
     '<option value="' + k.id + '">' + k.name + "</option>").join("") + "</select>";
   html += '<div class="btnrow">' +
-    '<button class="btn primary" data-action="ex-new">ADD EXERCISE</button>' +
+    '<button class="btn primary" data-action="ex-new">ADD TO LIBRARY</button>' +
     '<button class="btn" data-action="ex-save">SAVE NAMES</button></div>';
   return html;
 }
 
-function routineExercisePicker(r) {
-  const lib = state.exercises.filter(x => !x.archived);
-  if (!lib.length) return '<p class="muted">Library is empty.</p>';
-  return '<div class="daypick" style="margin-top:10px">' + lib.map(x =>
-    '<button style="min-width:auto;padding:0 12px" class="' +
-      ((r.exIds || []).indexOf(x.id) !== -1 ? "on" : "") + '"' +
-      ' data-action="rt-toggle" data-id="' + r.id + '" data-ex="' + x.id + '">' + esc(x.name) + "</button>"
-  ).join("") + "</div>";
-}
-
+/* --- history --- */
 function renderTrainHistory() {
-  const sessions = allSessions();
-  if (!sessions.length) return '<p class="empty">No sessions logged yet.</p>';
+  const days = allDays().filter(r => (r.items || []).some(e => e.sets.some(s => s.done)));
+  let html = "";
 
-  let html = '<div class="sechead">SESSIONS — ' + sessions.length + "</div>";
-  html += sessions.slice(0, 30).map(s => {
-    const byEx = {};
-    (s.sets || []).forEach(set => { (byEx[set.exId] = byEx[set.exId] || []).push(set); });
-    const r = s.routineId ? getRoutine(s.routineId) : null;
-    return '<div class="panel">' +
-      '<div class="row"><div class="grow">' + esc(prettyDate(s.date)) + "</div>" +
-        '<div class="muted">' + (s.sets || []).length + " SETS</div></div>" +
-      (r ? '<div class="muted">' + esc(r.name) + "</div>" : "") +
-      Object.keys(byEx).map(exId =>
-        '<div class="seg">' + esc(exName(exId)) + " · " +
-        byEx[exId].map(setLabel).map(esc).join(" / ") + "</div>"
-      ).join("") +
-    "</div>";
-  }).join("");
+  if (!days.length) {
+    html += '<p class="empty">No workouts logged yet.</p>';
+  } else {
+    html += '<div class="sechead">SESSIONS — ' + days.length + "</div>";
+    html += days.slice(0, 40).map(r =>
+      '<div class="panel">' +
+        '<div class="row"><div class="grow">' + esc(prettyDate(r.date)) +
+          (r.name ? " · " + esc(r.name) : "") + "</div>" +
+          '<div class="muted">' + doneCount(r) + "/" + r.items.length + "</div></div>" +
+        (r.items || []).map(e => {
+          const done = e.sets.filter(s => s.done);
+          if (!done.length) return "";
+          return '<div class="seg">' + esc(exName(e.exId)) + " · " +
+            done.map(s => esc(setText(e.exId, s))).join(" / ") + "</div>";
+        }).join("") +
+      "</div>"
+    ).join("");
+  }
 
   const lib = state.exercises.filter(x => !x.archived);
   if (lib.length) {
@@ -2153,7 +2304,7 @@ function renderTrainHistory() {
     html += lib.map(x => {
       const b = bestFor(x.id);
       return '<div class="seg">' + esc(x.name) + " · " +
-        (b ? esc(setLabel(b.set)) + " · " + esc(b.date.slice(5)) : "NO RECORD") + "</div>";
+        (b ? esc(setText(x.id, b.set)) + " · " + esc(b.date.slice(5)) : "NO RECORD") + "</div>";
     }).join("");
   }
   return html;
@@ -2456,7 +2607,9 @@ function showOverlay(kicker, big, sub, perkNames) {
   document.getElementById("ov-sub").textContent = sub || "";
   document.getElementById("ov-perks").innerHTML =
     (perkNames || []).map(n => "<div>" + esc(n) + "</div>").join("");
-  document.getElementById("overlay").className = "on";
+  const ov = document.getElementById("overlay");
+  ov.className = "on";
+  fx(ov.querySelector(".inner"), "sweep", 700);
 }
 
 function card(h, ev, isDone) {
@@ -2519,16 +2672,95 @@ async function renderConfig() {
    re-render, so tapping a swatch never discards it. */
 /* Same contract as the attribute editor: pull anything typed but not
    yet saved into state before a re-render. */
-function harvestTrainingNames() {
+function harvestPlan() {
   document.querySelectorAll("[data-ex-name]").forEach(inp => {
     const x = getExercise(inp.dataset.exName);
     if (x && inp.value.trim()) x.name = inp.value.trim();
   });
-  document.querySelectorAll("[data-routine]").forEach(inp => {
-    if (inp.tagName !== "INPUT") return;
-    const r = getRoutine(inp.dataset.routine);
-    if (r && inp.value.trim()) r.name = inp.value.trim();
+  const nameEl = document.getElementById("f-day-name");
+  if (nameEl) planFor(Number(nameEl.dataset.day)).name = nameEl.value.trim();
+
+  const sel = state.planDay == null ? fromISO(state.today).getDay() : state.planDay;
+  const items = planFor(sel).items;
+  document.querySelectorAll("[data-pi]").forEach(inp => {
+    const it = items[Number(inp.dataset.pi)];
+    if (!it) return;
+    const v = inp.value === "" ? null : Number(inp.value);
+    if (v !== null && isNaN(v)) return;
+    if (inp.dataset.f === "sets") it.sets = Math.max(1, v || 1);
+    else it[inp.dataset.f] = v;
   });
+}
+
+/* --- effects ---------------------------------------------------
+   One helper for every completion moment in the app. Each effect is
+   a one-shot class that is stripped again when it finishes, so
+   nothing is left animating and nothing loops. */
+function fx(el, name, ms) {
+  if (!el || reducedMotion()) return;
+  const cls = "fx-" + name;
+  el.classList.remove(cls);
+  void el.offsetWidth;                       // restart even if already applied
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), ms || 600);
+}
+
+function haptic(ms) {
+  if (navigator.vibrate && !reducedMotion()) navigator.vibrate(ms);
+}
+
+/* Ticking a set never re-renders. The screen is being used with sweaty
+   hands mid-set — a re-render would drop focus and wipe a half-typed
+   number — so state, storage and the DOM are updated in place. */
+async function toggleSet(btn) {
+  const rec = await materializeDay(state.today);
+  const entry = rec.items[Number(btn.dataset.i)];
+  if (!entry) return;
+  const set = entry.sets[Number(btn.dataset.s)];
+  if (!set) return;
+
+  set.done = !set.done;
+  const row = btn.closest(".wrow");
+  const block = btn.closest(".exblock");
+
+  if (set.done) {
+    // An empty box adopts whatever the placeholder was suggesting.
+    row.querySelectorAll(".gi").forEach(inp => {
+      if (inp.value === "" && inp.placeholder !== "") {
+        inp.value = inp.placeholder;
+        writeField(entry, Number(btn.dataset.s), inp.dataset.f, inp.value);
+      }
+    });
+  }
+
+  row.classList.toggle("done", set.done);
+  btn.classList.toggle("on", set.done);
+
+  if (set.done) {
+    fx(row, "sweep", 520);
+    fx(btn, "pop", 340);
+    haptic(10);
+  }
+
+  const complete = entryComplete(entry);
+  const was = block.classList.contains("complete");
+  block.classList.toggle("complete", complete);
+  if (complete && !was) {
+    fx(block, "jolt", 320);
+    fx(block.querySelector(".exname"), "chroma", 340);
+    haptic(24);
+  }
+
+  const counter = document.getElementById("wo-count");
+  if (counter) counter.textContent = doneCount(rec) + " / " + rec.items.length;
+
+  scheduleDaySave(state.today);
+
+  if (complete && !was && dayIsComplete(rec)) {
+    const sets = rec.items.reduce((n, e) => n + e.sets.filter(x => x.done).length, 0);
+    haptic(60);
+    showOverlay("Workout complete", tnum(sets), rec.items.length + " exercises cleared");
+  }
 }
 
 function harvestAttrNames() {
@@ -2710,6 +2942,12 @@ function renderSettings() {
     ).join("") + "</select>";
   html += '<p class="muted">Display only. Weekly targets and stored history stay on ISO weeks, Monday to Sunday.</p>';
 
+  html += "<label>TRAINING WEIGHT UNIT</label><select id=\"f-weight-unit\">" +
+    [["lb", "Pounds"], ["kg", "Kilograms"]].map(o =>
+      '<option value="' + o[0] + '"' + (state.cfg.WEIGHT_UNIT === o[0] ? " selected" : "") + ">" + o[1] + "</option>"
+    ).join("") + "</select>";
+  html += '<p class="muted">A label only. Numbers already logged are not converted.</p>';
+
   html += '<div class="sechead">TUNING</div>';
   html += '<div class="panel"><div class="muted">' +
     "LEVEL CONSTANT: " + cfg.LEVEL_CONSTANT + "<br>" +
@@ -2854,7 +3092,7 @@ async function buildExport() {
     habits: state.habits,
     meta: state.meta,
     exercises: state.exercises,
-    routines: state.routines,
+    plan: state.plan,
     logs: {},
     sessions: {}
   };
@@ -2925,7 +3163,7 @@ async function importJSON(text) {
   state.habits = d.habits;
   state.meta  = Object.assign(clone(DEFAULT_META), d.meta || {});
   state.exercises = d.exercises || [];
-  state.routines  = d.routines || [];
+  state.plan      = d.plan || blankPlan();
   state.logs.clear();
   state.wlogs.clear();
   invalidateIndex();
@@ -2936,7 +3174,7 @@ async function importJSON(text) {
   await Store.save("meta", state.meta);
 
   await Store.save("wk:exercises", state.exercises);
-  await Store.save("wk:routines", state.routines);
+  await Store.save("wk:plan", state.plan);
 
   const logs = d.logs || {};
   for (const wk in logs) {
@@ -2981,57 +3219,93 @@ document.addEventListener("click", async function (ev) {
     state.trainTab = el.dataset.tab;
     state.pickEx = false;
     render();
-  } else if (a === "sess-new") {
-    state.session = newSession(el.dataset.routine || null);
-    await persistActive();
+  } else if (a === "set-done") {
+    await toggleSet(el);
+  } else if (a === "set-add") {
+    const rec = await materializeDay(state.today);
+    rec.items[Number(el.dataset.i)].sets.push({ done: false });
+    await saveDay(state.today);
     render();
-  } else if (a === "sess-addex") {
-    if (state.session.exIds.indexOf(el.dataset.id) === -1) state.session.exIds.push(el.dataset.id);
-    state.pickEx = false;
-    await persistActive();
-    render();
-  } else if (a === "pick-open") {
+  } else if (a === "wo-addex") {
     state.pickEx = true; render();
+  } else if (a === "wo-pick") {
+    const rec = await materializeDay(state.today);
+    const ex = getExercise(el.dataset.id);
+    rec.items.push({
+      itemId: null, exId: ex.id,
+      target: { sets: 3, reps: null, weight: null, seconds: null },
+      sets: newSets(3)
+    });
+    state.pickEx = false;
+    await saveDay(state.today);
+    render();
+  } else if (a === "wo-drop") {
+    const rec = await materializeDay(state.today);
+    rec.items.splice(Number(el.dataset.i), 1);
+    await saveDay(state.today);
+    render();
+  } else if (a === "wo-reset") {
+    if (!confirm("Discard today's logged sets and rebuild from the plan?")) return;
+    const wk = isoWeekOf(state.today);
+    const rows = state.wlogs.get(wk) || [];
+    const i = rows.findIndex(r => r.date === state.today);
+    if (i !== -1) { rows.splice(i, 1); await saveDay(state.today); }
+    render();
+  } else if (a === "plan-day") {
+    harvestPlan();
+    state.planDay = Number(el.dataset.day);
+    state.pickEx = false;
+    await savePlan();
+    render();
+  } else if (a === "plan-add") {
+    harvestPlan();
+    state.pickEx = true;
+    render();
+  } else if (a === "plan-pick") {
+    harvestPlan();
+    const sel = state.planDay == null ? fromISO(state.today).getDay() : state.planDay;
+    planFor(sel).items.push({ id: makeId("i_"), exId: el.dataset.id, sets: 3, reps: null, weight: null, seconds: null });
+    state.pickEx = false;
+    await savePlan();
+    render();
+  } else if (a === "plan-save") {
+    harvestPlan();
+    await savePlan();
+    toast("Plan saved.", "earn");
+    render();
+  } else if (a === "plan-copy") {
+    harvestPlan();
+    const sel = state.planDay == null ? fromISO(state.today).getDay() : state.planDay;
+    const target = Number(el.dataset.day);
+    const src = planFor(sel);
+    planFor(target).name = src.name;
+    planFor(target).items = src.items.map(it => Object.assign({}, it, { id: makeId("i_") }));
+    await savePlan();
+    toast("Copied to " + DAY_LABEL[target] + ".", "earn");
+    render();
+  } else if (a === "pi-del") {
+    harvestPlan();
+    const sel = state.planDay == null ? fromISO(state.today).getDay() : state.planDay;
+    planFor(sel).items.splice(Number(el.dataset.i), 1);
+    await savePlan();
+    render();
+  } else if (a === "pi-move") {
+    harvestPlan();
+    const sel = state.planDay == null ? fromISO(state.today).getDay() : state.planDay;
+    const items = planFor(sel).items;
+    const i = Number(el.dataset.i);
+    const j = i + Number(el.dataset.dir);
+    if (j < 0 || j >= items.length) return;
+    const t = items[i]; items[i] = items[j]; items[j] = t;
+    await savePlan();
+    render();
   } else if (a === "pick-close") {
     state.pickEx = false; render();
-  } else if (a === "set-add") {
-    const exId = el.dataset.ex;
-    const ex = getExercise(exId);
-    const set = { exId: exId };
-    let any = false;
-    exKind(ex).fields.forEach(f => {
-      const inp = document.querySelector(".in-" + f + '[data-ex="' + exId + '"]');
-      const v = inp && inp.value !== "" ? Number(inp.value) : null;
-      if (v !== null && !isNaN(v)) { set[f] = v; any = true; }
-      if (inp) inp.value = "";
-    });
-    if (!any) { toast("Enter something first.", true); return; }
-    state.session.sets.push(set);
-    await persistActive();
-    if (navigator.vibrate && !reducedMotion()) navigator.vibrate(8);
-    render();
-  } else if (a === "set-del") {
-    const exId = el.dataset.ex;
-    const nth = Number(el.dataset.i);
-    let seen = -1;
-    const idx = state.session.sets.findIndex(x => {
-      if (x.exId !== exId) return false;
-      seen++;
-      return seen === nth;
-    });
-    if (idx !== -1) state.session.sets.splice(idx, 1);
-    await persistActive();
-    render();
-  } else if (a === "sess-finish") {
-    await finishSession();
-  } else if (a === "sess-abandon") {
-    if (!confirm("Discard this session? Nothing will be logged.")) return;
-    state.session = null;
-    await persistActive();
-    render();
   } else if (a === "ex-new") {
-    const name = (document.getElementById("f-ex-name") || {}).value || "";
+    const nameEl = document.getElementById("f-ex-name");
+    const name = nameEl ? nameEl.value : "";
     if (!name.trim()) { toast("Give the exercise a name.", true); return; }
+    harvestPlan();
     state.exercises.push({
       id: makeId("x_"),
       name: name.trim(),
@@ -3040,47 +3314,20 @@ document.addEventListener("click", async function (ev) {
       createdAt: todayISO()
     });
     await Store.save("wk:exercises", state.exercises);
-    toast("Exercise added.");
+    toast("Added to library.", "earn");
     render();
   } else if (a === "ex-save") {
-    harvestTrainingNames();
+    harvestPlan();
     await Store.save("wk:exercises", state.exercises);
     toast("Saved.");
     render();
   } else if (a === "ex-archive") {
-    harvestTrainingNames();
+    harvestPlan();
     getExercise(el.dataset.id).archived = true;
     await Store.save("wk:exercises", state.exercises);
-    toast("Archived. Past sessions keep it.");
+    toast("Archived. Past workouts keep it.");
     render();
-  } else if (a === "rt-new") {
-    harvestTrainingNames();
-    state.routines.push({ id: makeId("r_"), name: "New routine", exIds: [], habitId: null, archived: false });
-    await Store.save("wk:routines", state.routines);
-    render();
-  } else if (a === "rt-save") {
-    harvestTrainingNames();
-    await Store.save("wk:routines", state.routines);
-    toast("Saved.");
-    render();
-  } else if (a === "rt-archive") {
-    harvestTrainingNames();
-    getRoutine(el.dataset.id).archived = true;
-    await Store.save("wk:routines", state.routines);
-    render();
-  } else if (a === "rt-edit") {
-    harvestTrainingNames();
-    state.editRoutine = state.editRoutine === el.dataset.id ? null : el.dataset.id;
-    render();
-  } else if (a === "rt-toggle") {
-    harvestTrainingNames();
-    const r = getRoutine(el.dataset.id);
-    r.exIds = r.exIds || [];
-    const i = r.exIds.indexOf(el.dataset.ex);
-    if (i === -1) r.exIds.push(el.dataset.ex); else r.exIds.splice(i, 1);
-    await Store.save("wk:routines", state.routines);
-    render();
-  } else if (a === "rtab") {
+  } else if (a === "rtab") {  } else if (a === "rtab") {
     state.recordsTab = el.dataset.tab;
     render();
   } else if (a === "month") {
@@ -3095,11 +3342,16 @@ document.addEventListener("click", async function (ev) {
     const cardEl = el.closest(".card");
     if (cardEl && !reducedMotion()) {
       cardEl.classList.add("flash");
-      if (navigator.vibrate) navigator.vibrate(12);
-      await new Promise(r => setTimeout(r, 150));
+      fx(cardEl, "sweep", 480);
+      fx(cardEl.querySelector(".name"), "chroma", 340);
+      fx(cardEl.querySelector(".xp"), "pop", 340);
+      haptic(12);
+      await new Promise(r => setTimeout(r, 260));
     }
     await completeHabit(el.dataset.id, state.today, "manual");
   } else if (a === "retro") {
+    const cardEl = el.closest(".card");
+    if (cardEl && !reducedMotion()) { fx(cardEl, "sweep", 480); haptic(10); await new Promise(r => setTimeout(r, 200)); }
     await completeHabit(el.dataset.id, el.dataset.date, "backfill");
   } else if (a === "undo") {
     await undoCompletion(el.dataset.id, state.today);
@@ -3178,6 +3430,19 @@ document.addEventListener("click", async function (ev) {
   }
 });
 
+/* Live entry. Writes into state on every keystroke and defers the
+   storage write, so a set survives the phone locking mid-workout. */
+document.addEventListener("input", async function (ev) {
+  const el = ev.target;
+  if (!el.classList || !el.classList.contains("gi")) return;
+  if (el.dataset.i === undefined) return;
+  const rec = await materializeDay(state.today);
+  const entry = rec.items[Number(el.dataset.i)];
+  if (!entry) return;
+  writeField(entry, Number(el.dataset.s), el.dataset.f, el.value);
+  scheduleDaySave(state.today);
+});
+
 document.addEventListener("change", async function (ev) {
   const el = ev.target;
 
@@ -3192,22 +3457,17 @@ document.addEventListener("change", async function (ev) {
     render();
   }
 
-  if (el.dataset && el.dataset.action === "sess-habit") {
-    state.session.habitId = el.value || null;
-    await persistActive();
-    return;
-  }
-
-  if (el.dataset && el.dataset.action === "rt-habit") {
-    getRoutine(el.dataset.id).habitId = el.value || null;
-    await Store.save("wk:routines", state.routines);
-    return;
-  }
-
   if (el.id === "f-ambient") {
     state.cfg.AMBIENT = el.checked;
     await Store.save("cfg", state.cfg);
     applyAmbient();
+    return;
+  }
+
+  if (el.id === "f-weight-unit") {
+    state.cfg.WEIGHT_UNIT = el.value;
+    await Store.save("cfg", state.cfg);
+    render();
     return;
   }
 
@@ -3306,18 +3566,23 @@ async function boot() {
   if (!state.meta.records) state.meta.records = {};
 
   state.exercises = (await Store.load("wk:exercises")) || [];
-  state.routines  = (await Store.load("wk:routines")) || [];
-  state.session   = await Store.load("wk:active");
+  state.plan = (await Store.load("wk:plan")) || blankPlan();
 
-  /* Stamped once, so external contracts start counting from the day
-     TRAINING first became available and never before it. */
-  if (!state.cfg.TRAINING_FROM) {
-    state.cfg.TRAINING_FROM = todayISO();
+  /* One-time move to pounds, and legacy distance exercises fold into
+     the time kind since the rework dropped that measurement. */
+  if (!state.cfg.UNIT_PATCH) {
+    state.cfg.WEIGHT_UNIT = "lb";
+    state.cfg.UNIT_PATCH = true;
     await Store.save("cfg", state.cfg);
   }
+  let exPatched = false;
+  state.exercises.forEach(x => {
+    if (x.kind === "distance_time") { x.kind = "duration"; exPatched = true; }
+  });
+  if (exPatched) await Store.save("wk:exercises", state.exercises);
 
   await loadAllLogs();
-  await loadAllSessions();
+  await loadAllWorkouts();
   await syncPerks();
   await snapshotTotals();
   render();
