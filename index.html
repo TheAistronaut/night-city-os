@@ -1,0 +1,2164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>NIGHT CITY OS</title>
+<style>
+/* ============================================================
+   PHASE 1 STYLING — deliberately plain.
+   Colour tokens from the aesthetic brief are declared here and
+   referenced by var() everywhere. Phase 5 adds the visual layer
+   (notches, brackets, fonts, glitch) without touching this block.
+   ============================================================ */
+:root {
+  /* Ground */
+  --bg-void:        #05060A;
+  --bg-panel:       #0C0F16;
+  --bg-raised:      #141926;
+  --bg-inset:       #020308;
+
+  /* Yellow — earned */
+  --earn:           #FCEE0A;
+  --earn-dim:       #BCAF16;
+
+  /* Cyan — structure */
+  --struct:         #1CB5A3;
+  --struct-bright:  #2FE3CC;
+  --struct-dim:     #146E64;
+
+  /* Red — at risk */
+  --risk:           #FF4D4D;
+  --risk-deep:      #9D2529;
+
+  /* Text */
+  --text-primary:   #E8ECF2;
+  --text-secondary: #8A94A6;
+  --text-ghost:     #3A4252;
+
+  /* Lines */
+  --line-strong:    #1CB5A3;
+  --line-weak:      #1E2634;
+
+  /* Metrics */
+  --tap:            48px;
+  --gap:            12px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 17px;
+  line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+}
+
+/* --- shell --- */
+.topbar {
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  border-bottom: 1px solid var(--line-weak);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.wordmark { font-size: 15px; font-weight: 700; letter-spacing: .15em; color: var(--struct); }
+.topmeta  { font-size: 13px; color: var(--text-secondary); }
+
+main { padding: 16px; max-width: 640px; margin: 0 auto; }
+
+.navbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--line-weak);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.navbar button {
+  flex: 1;
+  min-height: 56px;
+  background: none;
+  border: none;
+  border-top: 2px solid transparent;
+  color: var(--struct-dim);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  font-family: inherit;
+}
+.navbar button.on { color: var(--earn); border-top-color: var(--earn); }
+.navbar button:disabled { color: var(--text-ghost); }
+
+/* --- structure --- */
+.sechead {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  color: var(--struct);
+  margin: 24px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line-weak);
+}
+.sechead:first-child { margin-top: 0; }
+.muted { color: var(--text-secondary); font-size: 13px; }
+.empty { color: var(--text-secondary); font-size: 15px; padding: 24px 0; }
+
+/* --- contract cards --- */
+.card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line-weak);
+  border-left: 2px solid var(--struct-dim);
+  margin-bottom: var(--gap);
+  display: flex;
+  align-items: stretch;
+}
+.card.done { border-left-color: var(--earn-dim); opacity: .55; }
+.card.ext  { border-left-style: dashed; }
+.card.frac { border-left-color: var(--risk); }
+.card .risk { color: var(--risk); }
+.retrodate { font-size: 13px; font-weight: 600; letter-spacing: .1em; color: var(--text-secondary); margin: 12px 0 6px; }
+.card > .body {
+  flex: 1;
+  min-height: var(--tap);
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: 17px;
+  text-align: left;
+  display: block;
+  width: 100%;
+}
+.card > .body:disabled { color: var(--text-secondary); }
+.card .name { font-size: 18px; font-weight: 600; }
+.card .meta { font-size: 13px; letter-spacing: .06em; color: var(--text-secondary); margin-top: 2px; }
+.card .xp   { color: var(--earn-dim); }
+.card .flag { color: var(--struct); }
+.card .side {
+  display: flex;
+  align-items: center;
+  border-left: 1px solid var(--line-weak);
+}
+
+/* --- buttons --- */
+button { cursor: pointer; }
+.btn {
+  min-height: var(--tap);
+  padding: 0 16px;
+  background: none;
+  border: 1.5px solid var(--struct);
+  color: var(--struct);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .08em;
+}
+.btn.primary { background: var(--earn); border-color: var(--earn); color: var(--bg-void); }
+.btn.danger  { border-color: var(--risk); color: var(--risk); }
+.btn:active  { background: var(--bg-raised); }
+.btn.primary:active { background: var(--earn-dim); }
+.btn.small   { min-height: 40px; padding: 0 10px; }
+.btn.full    { width: 100%; }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: var(--gap); }
+
+/* --- forms --- */
+label { display: block; font-size: 13px; font-weight: 600; letter-spacing: .1em; color: var(--struct); margin: 16px 0 6px; }
+input[type=text], input[type=number], select, textarea {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 10px 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--line-weak);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 17px;
+}
+textarea { min-height: 72px; resize: vertical; }
+.daypick { display: flex; gap: 6px; flex-wrap: wrap; }
+.daypick button {
+  min-width: var(--tap); min-height: var(--tap);
+  background: var(--bg-inset);
+  border: 1.5px solid var(--line-weak);
+  color: var(--text-secondary);
+  font-family: inherit; font-size: 13px; font-weight: 600;
+}
+.daypick button.on { border-color: var(--earn); color: var(--earn); }
+.panel { background: var(--bg-panel); border: 1px solid var(--line-weak); padding: 12px 14px; margin-bottom: var(--gap); }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.row .grow { flex: 1; min-width: 0; }
+.checkline { display: flex; align-items: center; gap: 10px; min-height: var(--tap); }
+.checkline input { width: 22px; height: 22px; accent-color: var(--earn); }
+.checkline span { font-size: 15px; }
+
+/* --- misc --- */
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tabs button {
+  flex: 1; min-height: var(--tap);
+  background: none; border: 1.5px solid var(--line-weak);
+  color: var(--text-secondary);
+  font-family: inherit; font-size: 13px; font-weight: 600; letter-spacing: .08em;
+}
+.tabs button.on { border-color: var(--earn); color: var(--earn); }
+/* --- records --- */
+.calnav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.calnav .m { font-size: 15px; font-weight: 600; letter-spacing: .12em; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal .dow { font-size: 13px; font-weight: 600; letter-spacing: .06em; color: var(--struct); text-align: center; }
+.day {
+  position: relative; aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-panel); border: 1px solid var(--line-weak);
+  padding: 0; font-family: inherit;
+}
+.day.pad { background: none; border: none; }
+.day .fill { position: absolute; inset: 0; background: var(--earn); }
+.day .n { position: relative; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.day.has .n { color: var(--text-primary); }
+.day.lv3 .n, .day.lv4 .n { color: var(--bg-void); }
+.day.sel { outline: 2px solid var(--text-primary); outline-offset: -2px; }
+.day:disabled { opacity: .3; }
+
+.strip { display: flex; gap: 1px; overflow-x: auto; padding: 8px 0 4px; }
+.strip i { flex: 0 0 6px; height: 16px; background: var(--bg-raised); }
+.strip i.hit  { background: var(--earn); }
+.strip i.miss { background: var(--risk-deep); }
+.strip i.pre  { background: var(--bg-inset); }
+.strip i.open { background: var(--struct-dim); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.chip {
+  font-size: 13px; font-weight: 600; letter-spacing: .04em;
+  padding: 6px 8px; border: 1px solid var(--line-weak); color: var(--text-secondary);
+}
+.chip.met { border-color: var(--earn-dim); color: var(--earn-dim); }
+.seg { font-size: 13px; letter-spacing: .04em; color: var(--text-secondary); padding: 4px 0; border-bottom: 1px solid var(--line-weak); }
+.seg .risk { color: var(--risk); }
+
+/* --- progression --- */
+.stats { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.lv { font-size: 32px; font-weight: 700; line-height: 1.05; }
+.stats .sc { font-size: 13px; font-weight: 600; letter-spacing: .08em; color: var(--struct); text-align: right; }
+.stats .tx { color: var(--earn); }
+.bar { height: 6px; background: var(--bg-inset); margin: 8px 0 4px; }
+.bar i { display: block; height: 100%; background: var(--earn); }
+.bar.struct i { background: var(--struct); }
+.fullclear {
+  margin: 12px 0; padding: 12px;
+  border: 1.5px solid var(--earn); color: var(--earn);
+  font-size: 15px; font-weight: 700; letter-spacing: .18em; text-align: center;
+}
+.perk { border: 1px solid var(--line-weak); padding: 10px 12px; margin-bottom: 8px; }
+.perk.on { border-color: var(--earn-dim); }
+.perk .pn { font-size: 15px; font-weight: 600; color: var(--text-secondary); letter-spacing: .06em; }
+.perk.on .pn { color: var(--earn); }
+.perk .pc { font-size: 13px; color: var(--text-secondary); }
+.radar { width: 100%; max-width: 400px; margin: 8px auto; display: block; overflow: visible; }
+.radar .rgrid { fill: none; stroke: var(--line-weak); stroke-width: 1.5; }
+.radar .raxis { stroke: var(--line-weak); stroke-width: 1.5; }
+.radar .rdata { fill: var(--struct-dim); fill-opacity: .35; stroke: var(--struct); stroke-width: 2; }
+.radar .rlabel { fill: var(--struct); font-size: 13px; font-weight: 600; letter-spacing: .04em; }
+
+#toast {
+  position: fixed; left: 16px; right: 16px;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  background: var(--bg-raised);
+  border: 1px solid var(--struct);
+  color: var(--text-primary);
+  padding: 12px 14px;
+  font-size: 15px;
+  max-width: 608px; margin: 0 auto;
+  display: none;
+}
+#toast.risk { border-color: var(--risk); color: var(--risk); }
+#toast.on { display: block; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="wordmark">NIGHT CITY OS</span>
+  <span class="topmeta" id="topmeta"></span>
+</header>
+
+<main id="view"></main>
+
+<nav class="navbar" id="nav">
+  <button data-action="nav" data-view="board">JOBS</button>
+  <button data-action="nav" data-view="profile">PROFILE</button>
+  <button data-action="nav" data-view="records">RECORDS</button>
+  <button data-action="nav" data-view="config">CONFIG</button>
+  <button disabled>TRAINING</button>
+</nav>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   1. STORAGE ADAPTER
+   The only place in the app that touches a storage API.
+   Async throughout so the artifact and PWA backends share one
+   interface — porting swaps the internals of this block only.
+   ============================================================ */
+const Store = (function () {
+  const NS = "ncos:";
+  const useArtifact =
+    typeof window !== "undefined" &&
+    window.storage &&
+    typeof window.storage.get === "function";
+
+  async function save(key, value) {
+    const raw = JSON.stringify(value);
+    if (useArtifact) { await window.storage.set(NS + key, raw, false); return; }
+    localStorage.setItem(NS + key, raw);
+  }
+
+  async function load(key) {
+    let raw = null;
+    if (useArtifact) {
+      try {
+        const res = await window.storage.get(NS + key, false);
+        raw = res ? res.value : null;
+      } catch (e) { return null; }          // missing key throws in this backend
+    } else {
+      raw = localStorage.getItem(NS + key);
+    }
+    if (raw === null || raw === undefined) return null;
+    try { return JSON.parse(raw); } catch (e) { return null; }
+  }
+
+  async function listKeys(prefix) {
+    const p = prefix || "";
+    if (useArtifact) {
+      try {
+        const res = await window.storage.list(NS + p, false);
+        const keys = res && res.keys ? res.keys : [];
+        return keys
+          .map(k => (typeof k === "string" ? k : k.key))
+          .map(k => k.slice(NS.length));
+      } catch (e) { return []; }
+    }
+    const out = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k.indexOf(NS + p) === 0) out.push(k.slice(NS.length));
+    }
+    return out;
+  }
+
+  async function drop(key) {
+    if (useArtifact) {
+      try { await window.storage.delete(NS + key, false); } catch (e) {}
+      return;
+    }
+    localStorage.removeItem(NS + key);
+  }
+
+  return { save, load, listKeys, drop, backend: useArtifact ? "artifact" : "local" };
+})();
+
+/* ============================================================
+   2. CONSTANTS AND SEED STATE
+   ============================================================ */
+const SCHEMA_VERSION = 1;
+
+const DEFAULT_CFG = {
+  schemaVersion: SCHEMA_VERSION,
+  LEVEL_CONSTANT: 40,
+  LEVEL_CAP: 30,
+  ATTR_CONSTANT: 15,
+  ATTR_LEVEL_CAP: 20,
+  SC_CONSTANT: 30,
+  SC_EXPONENT: 1.8,
+  SC_CAP: 50,
+  FRACTURE_WINDOW_DAYS: 14,
+  BACKFILL_HOURS: 48,
+  XP_TIERS: { trivial: 5, standard: 10, demanding: 25, major: 50 },
+  PERFECT_DAY_XP: 20,
+  PERFECT_WEEK_XP: 75,
+  SC_PERFECT_DAY: 10,
+  SC_PERFECT_WEEK: 50,
+  SC_RUN_7: 25,
+  SC_RUN_30: 100,
+  SC_RUN_100: 300,
+  WEEK_START_DAY: 0
+};
+
+/* Unlocked by any attribute reaching the given level. Once unlocked,
+   permanently active — the unlocked set is stored in meta.perks and
+   only ever grows. */
+const PERKS = [
+  { id: "p_second_wind",     name: "Second Wind",         at: 5,  effect: "+1 fracture allowance per 14 days" },
+  { id: "p_extended_buffer", name: "Extended Buffer",     at: 5,  effect: "LOG RETRO window 48h to 72h" },
+  { id: "p_overclock",       name: "Overclock",           at: 10, effect: "FULL CLEAR bonus ×1.5" },
+  { id: "p_deep_focus",      name: "Deep Focus",          at: 10, effect: "Demanding and Major contracts +20% XP" },
+  { id: "p_momentum",        name: "Momentum",            at: 15, effect: "Contracts on a 30+ run earn +10% XP" },
+  { id: "p_chrome",          name: "Chrome Compatibility", at: 20, effect: "+5% XP to contracts feeding a level 20 attribute" }
+];
+
+const SC_TITLES = [
+  { at: 40, name: "LEGEND" },
+  { at: 30, name: "FIXER" },
+  { at: 20, name: "NETRUNNER" },
+  { at: 10, name: "SOLO" },
+  { at: 1,  name: "MERC" }
+];
+
+const DEFAULT_ATTRS = [
+  { id: "a_body",   name: "Body",              colour: null, archived: false },
+  { id: "a_reflex", name: "Reflexes",          colour: null, archived: false },
+  { id: "a_tech",   name: "Technical Ability", colour: null, archived: false },
+  { id: "a_int",    name: "Intelligence",      colour: null, archived: false },
+  { id: "a_cool",   name: "Cool",              colour: null, archived: false }
+];
+
+const DEFAULT_META = {
+  schemaVersion: SCHEMA_VERSION,
+  totalXP: 0,          // phase 4 owns these; seeded so the shape is stable
+  streetCred: 0,
+  perks: [],
+  records: {}
+};
+
+const TIERS = ["trivial", "standard", "demanding", "major"];
+/* Display order only. ISO week numbering, the log:YYYY-Www keys and
+   n_per_week period boundaries stay Monday-based regardless — those
+   are storage structure, not presentation. */
+function weekStartDay() {
+  const s = state.cfg && state.cfg.WEEK_START_DAY;
+  return typeof s === "number" ? s : 0;
+}
+
+function dayOrder() {
+  const out = [];
+  for (let i = 0; i < 7; i++) out.push((weekStartDay() + i) % 7);
+  return out;
+}
+const DAY_LABEL = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+/* ============================================================
+   3. DATE HELPERS — local time, ISO strings, ISO week keys
+   ============================================================ */
+function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+function toISO(d) {
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+}
+
+function fromISO(s) {
+  const p = s.split("-");
+  return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+}
+
+function todayISO() { return toISO(new Date()); }
+
+/* ISO 8601 week key: "2026-W36" */
+function isoWeekOf(dateISO) {
+  const d = fromISO(dateISO);
+  const t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day = (t.getDay() + 6) % 7;                 // Mon = 0
+  t.setDate(t.getDate() - day + 3);                 // nearest Thursday
+  const year = t.getFullYear();
+  const jan4 = new Date(year, 0, 4);
+  const jan4day = (jan4.getDay() + 6) % 7;
+  const week1Mon = new Date(year, 0, 4 - jan4day);
+  const week = 1 + Math.round((t - week1Mon) / 604800000);
+  return year + "-W" + pad(week);
+}
+
+/* Every week key touched by an inclusive date range */
+function weekKeysBetween(startISO, endISO) {
+  const out = [];
+  const end = fromISO(endISO);
+  const cur = fromISO(startISO);
+  while (cur <= end) {
+    const k = isoWeekOf(toISO(cur));
+    if (out.indexOf(k) === -1) out.push(k);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+
+function monthStartISO(dateISO) {
+  const d = fromISO(dateISO);
+  return toISO(new Date(d.getFullYear(), d.getMonth(), 1));
+}
+
+function weekStartISO(dateISO) {
+  const d = fromISO(dateISO);
+  const back = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - back);
+  return toISO(d);
+}
+
+function prettyDate(dateISO) {
+  const d = fromISO(dateISO);
+  return DAY_LABEL[d.getDay()] + " " + pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + d.getFullYear();
+}
+
+/* ============================================================
+   4. APP STATE
+   ============================================================ */
+const state = {
+  cfg: null,
+  attrs: [],
+  habits: [],
+  meta: null,
+  logs: new Map(),        // weekKey -> array of completion records
+  view: "board",
+  configTab: "contracts",
+  recordsTab: "calendar",
+  recordsMonth: null,      // ISO first-of-month currently on show
+  selectedDay: null,
+  editing: null,          // habit draft object while the editor is open
+  today: todayISO()
+};
+
+/* ============================================================
+   5. DATA LAYER
+   ============================================================ */
+function makeId(prefix) {
+  let id;
+  do {
+    id = prefix + Math.random().toString(16).slice(2, 6);
+  } while (state.habits.some(h => h.id === id) || state.attrs.some(a => a.id === id));
+  return id;
+}
+
+function getHabit(id)  { return state.habits.find(h => h.id === id) || null; }
+function getAttr(id)   { return state.attrs.find(a => a.id === id) || null; }
+function attrName(id)  { const a = getAttr(id); return a ? a.name : "UNASSIGNED"; }
+function xpFor(habit)  { return state.cfg.XP_TIERS[habit.tier] || 0; }
+
+async function loadWeek(weekKey) {
+  if (state.logs.has(weekKey)) return state.logs.get(weekKey);
+  const rows = (await Store.load("log:" + weekKey)) || [];
+  state.logs.set(weekKey, rows);
+  return rows;
+}
+
+async function saveWeek(weekKey) {
+  await Store.save("log:" + weekKey, state.logs.get(weekKey) || []);
+  invalidateIndex();
+}
+
+/* Streak derivation needs the whole history, so the log is pulled
+   into memory once at boot and kept warm. One listKeys plus one
+   read per week — about 52 reads after a year of daily use. */
+async function loadAllLogs() {
+  const keys = await Store.listKeys("log:");
+  for (const k of keys) {
+    state.logs.set(k.slice(4), (await Store.load(k)) || []);
+  }
+}
+
+/* habitId -> Set of ISO dates on which it was completed.
+   Built once per render and dropped whenever the log changes. */
+let indexCache = null;
+function invalidateIndex() { indexCache = null; progCache = null; }
+
+function completionIndex() {
+  if (indexCache) return indexCache;
+  const map = new Map();
+  state.logs.forEach(rows => {
+    rows.forEach(r => {
+      if (!map.has(r.habitId)) map.set(r.habitId, new Set());
+      map.get(r.habitId).add(r.date);
+    });
+  });
+  indexCache = map;
+  return map;
+}
+
+function datesFor(idx, habitId) { return idx.get(habitId) || new Set(); }
+
+async function completeHabit(habitId, dateISO, source) {
+  const h = getHabit(habitId);
+  if (!h || h.archived) return;
+  if (h.external && source !== "workout") return;
+
+  if (source === "backfill") {
+    if (backfillDates(new Date()).indexOf(dateISO) === -1) {
+      toast("That occurrence is outside the " + backfillWindowHours() + "h window.", true);
+      return;
+    }
+  } else if (dateISO !== state.today) {
+    return;
+  }
+
+  const wk = isoWeekOf(dateISO);
+  const rows = await loadWeek(wk);
+  if (rows.some(r => r.habitId === habitId && r.date === dateISO)) return;
+
+  const before = progression();
+  const beforeLevel = before.char.level;
+  const beforeSC = before.scBar.level;
+  const ev = evaluateHabit(h, datesFor(completionIndex(), h.id), state.today);
+  const award = xpAward(h, ev.run, before.attrLevels.get(h.attrId) || 1);
+
+  rows.push({
+    habitId: h.id,
+    date: dateISO,
+    source: source || "manual",
+    xp: award,
+    attrId: h.attrId
+  });
+  await saveWeek(wk);
+  await recordLongestRun(h);
+
+  const after = progression();
+  const fresh = await syncPerks();
+  await snapshotTotals();
+
+  let msg = (source === "backfill" ? "Logged for " + prettyDate(dateISO) + ". " : h.name + " cleared. ") +
+    "+" + award + " XP";
+  if (after.todayPerfect && !before.todayPerfect) msg = "FULL CLEAR. +" + award + " and +" + after.dayBonus + " XP";
+  if (after.char.level > beforeLevel) msg = "LEVEL " + after.char.level + ". +" + award + " XP";
+  if (after.scBar.level > beforeSC) msg += " · STREET CRED " + after.scBar.level;
+  if (fresh.length) msg += " · PERK: " + PERKS.filter(p => fresh.indexOf(p.id) !== -1).map(p => p.name).join(", ");
+
+  toast(msg);
+  render();
+}
+
+/* meta.totalXP and meta.streetCred are a snapshot for exports and for
+   anyone reading the stored data directly. The app always reads the
+   derived values, so drift here can never affect behaviour. */
+async function snapshotTotals() {
+  const p = progression();
+  if (state.meta.totalXP !== p.totalXP || state.meta.streetCred !== p.sc) {
+    state.meta.totalXP = p.totalXP;
+    state.meta.streetCred = p.sc;
+    await Store.save("meta", state.meta);
+  }
+}
+
+/* longestStreak is the one derived value that is also stored — it has
+   to survive a reset, and a reset erases the evidence from the log. */
+async function recordLongestRun(habit) {
+  const ev = evaluateHabit(habit, datesFor(completionIndex(), habit.id), state.today);
+  if (!state.meta.records) state.meta.records = {};
+  if (!state.meta.records.longestStreak) state.meta.records.longestStreak = {};
+  const book = state.meta.records.longestStreak;
+  if ((book[habit.id] || 0) < ev.longest) {
+    book[habit.id] = ev.longest;
+    await Store.save("meta", state.meta);
+  }
+}
+
+/* Same-day correction for a mis-tap. Not a penalty mechanic —
+   the record is removed, no XP is deducted from any total. */
+async function undoCompletion(habitId, dateISO) {
+  const wk = isoWeekOf(dateISO);
+  const rows = await loadWeek(wk);
+  const i = rows.findIndex(r => r.habitId === habitId && r.date === dateISO);
+  if (i === -1) return;
+  rows.splice(i, 1);
+  await saveWeek(wk);
+  render();
+}
+
+/* ============================================================
+   5B. CADENCE ENGINE
+   Occurrences, derived runs, fracture state machine, backfill
+   eligibility. Nothing in here is stored. Every value is computed
+   from the log each time it is needed, so a backfill written today
+   repairs a run that broke two days ago with no repair step.
+   ============================================================ */
+
+const MAX_LOOKBACK_DAYS = 400;   // ceiling on how far back a run is walked
+
+function addDays(dateISO, n) {
+  const d = fromISO(dateISO);
+  d.setDate(d.getDate() + n);
+  return toISO(d);
+}
+
+function daysBetween(aISO, bISO) {
+  return Math.round((fromISO(bISO) - fromISO(aISO)) / 86400000);
+}
+
+function monthEndISO(dateISO) {
+  const d = fromISO(dateISO);
+  return toISO(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+}
+
+/* Perk seams. Phase 4 unlocks these; the engine already reads them. */
+function fractureAllowance() {
+  const perks = (state.meta && state.meta.perks) || [];
+  return 1 + (perks.indexOf("p_second_wind") !== -1 ? 1 : 0);
+}
+
+function backfillWindowHours() {
+  const perks = (state.meta && state.meta.perks) || [];
+  return perks.indexOf("p_extended_buffer") !== -1 ? 72 : state.cfg.BACKFILL_HOURS;
+}
+
+/* Every occurrence period from the habit's creation to today, oldest
+   first. A period is one day for daily and weekdays, one ISO week for
+   n_per_week, one calendar month for n_per_month. */
+function enumeratePeriods(habit, today) {
+  const created = habit.createdAt || today;
+  const floor = addDays(today, -MAX_LOOKBACK_DAYS);
+  const from = created > floor ? created : floor;
+  const c = habit.cadence || { type: "daily" };
+  const out = [];
+
+  if (c.type === "daily" || c.type === "weekdays") {
+    const days = c.type === "weekdays" ? (c.days || []) : null;
+    let d = from;
+    while (d <= today) {
+      if (!days || days.indexOf(fromISO(d).getDay()) !== -1) {
+        out.push({ start: d, end: d, target: 1, evaluable: d >= created });
+      }
+      d = addDays(d, 1);
+    }
+  } else if (c.type === "n_per_week") {
+    let s = weekStartISO(from);
+    while (s <= today) {
+      out.push({ start: s, end: addDays(s, 6), target: c.n || 1, evaluable: s >= created });
+      s = addDays(s, 7);
+    }
+  } else if (c.type === "n_per_month") {
+    let s = monthStartISO(from);
+    while (s <= today) {
+      out.push({ start: s, end: monthEndISO(s), target: c.n || 1, evaluable: s >= created });
+      s = addDays(monthEndISO(s), 1);
+    }
+  }
+  return out;
+}
+
+function countInPeriod(dates, p) {
+  let n = 0;
+  let d = p.start;
+  while (d <= p.end) {
+    if (dates.has(d)) n++;
+    d = addDays(d, 1);
+  }
+  return n;
+}
+
+function periodContaining(habit, dateISO) {
+  const c = habit.cadence || { type: "daily" };
+  if (c.type === "n_per_week") {
+    const s = weekStartISO(dateISO);
+    return { start: s, end: addDays(s, 6), target: c.n || 1 };
+  }
+  if (c.type === "n_per_month") {
+    const s = monthStartISO(dateISO);
+    return { start: s, end: monthEndISO(s), target: c.n || 1 };
+  }
+  return { start: dateISO, end: dateISO, target: 1 };
+}
+
+/* The state machine. Walks closed periods oldest to newest:
+
+     ACTIVE --miss--> FRACTURED --met--> ACTIVE
+                                --miss--> FLATLINED (run resets to 0)
+     ACTIVE --miss within FRACTURE_WINDOW_DAYS of the last fracture-->
+                                          FLATLINED
+
+   The still-open period is never judged as a miss; it is only allowed
+   to add to the run once its target is met. */
+function evaluateHabit(habit, dates, today) {
+  const periods = enumeratePeriods(habit, today);
+  const allowance = fractureAllowance();
+
+  let run = 0, longest = 0, st = "active", brokeAt = null;
+  let fractures = [];
+  let current = null;
+
+  /* Run segments, oldest first. A segment closes when the run flatlines,
+     so RECORDS can show what was lost, not just what survives. */
+  /* Every period end at which this habit fractured. Street Cred is
+     withheld from any day or week that contains one. */
+  const fractureLog = [];
+  const segments = [];
+  let segStart = null, segFractures = 0, lastMetEnd = null;
+
+  for (const p of periods) {
+    p.count = countInPeriod(dates, p);
+    p.met = p.count >= p.target;
+
+    if (p.end >= today) { p.open = true; current = p; break; }
+
+    if (p.met) {
+      if (run === 0) { segStart = p.start; segFractures = 0; }
+      run++;
+      lastMetEnd = p.end;
+      if (run > longest) longest = run;
+      if (st === "fractured") st = "active";
+      continue;
+    }
+
+    if (!p.evaluable) continue;              // period predates the habit
+    if (run === 0 && st === "active") continue;   // nothing to lose yet
+
+    if (st === "fractured") {
+      segments.push({ start: segStart, end: lastMetEnd, length: run, fractures: segFractures, ended: "flatlined" });
+      run = 0; st = "active"; brokeAt = p.end; fractures = []; segStart = null; segFractures = 0;
+    } else {
+      const recent = fractures.filter(f => daysBetween(f, p.end) < state.cfg.FRACTURE_WINDOW_DAYS).length;
+      if (recent >= allowance) {
+        segments.push({ start: segStart, end: lastMetEnd, length: run, fractures: segFractures, ended: "flatlined" });
+        run = 0; st = "active"; brokeAt = p.end; fractures = []; segStart = null; segFractures = 0;
+      } else {
+        fractures.push(p.end);
+        fractureLog.push(p.end);
+        segFractures++;
+        st = "fractured";
+      }
+    }
+  }
+
+  if (current && current.met) {
+    if (run === 0) { segStart = current.start; segFractures = 0; }
+    run++;
+    lastMetEnd = current.end > today ? today : current.end;
+    if (st === "fractured") st = "active";
+  }
+  if (run > longest) longest = run;
+  if (run > 0 && segStart) {
+    segments.push({ start: segStart, end: lastMetEnd, length: run, fractures: segFractures, ended: "current" });
+  }
+
+  const stored = (state.meta && state.meta.records && state.meta.records.longestStreak) || {};
+  if ((stored[habit.id] || 0) > longest) longest = stored[habit.id];
+
+  const doneToday = dates.has(today);
+  let dueToday;
+  const c = habit.cadence || { type: "daily" };
+  if (c.type === "daily") dueToday = !doneToday;
+  else if (c.type === "weekdays") dueToday = !doneToday && (c.days || []).indexOf(fromISO(today).getDay()) !== -1;
+  else dueToday = !doneToday && !!current && current.count < current.target;
+
+  return {
+    run: run,
+    longest: longest,
+    state: st,
+    brokeAt: brokeAt,
+    current: current,
+    segments: segments,
+    fractureLog: fractureLog,
+    dueToday: dueToday,
+    doneToday: doneToday
+  };
+}
+
+/* Was this habit owed something on a past date? Used by LOG RETRO. */
+function wasDueOn(habit, dates, dateISO) {
+  if (habit.createdAt && dateISO < habit.createdAt) return false;
+  if (dates.has(dateISO)) return false;
+  const c = habit.cadence || { type: "daily" };
+  if (c.type === "daily") return true;
+  if (c.type === "weekdays") return (c.days || []).indexOf(fromISO(dateISO).getDay()) !== -1;
+  const p = periodContaining(habit, dateISO);
+  return countInPeriod(dates, p) < p.target;
+}
+
+/* Past dates still inside the backfill window, most recent first. */
+function backfillDates(now) {
+  const hours = backfillWindowHours();
+  const out = [];
+  const todayStr = toISO(now);
+  for (let i = 1; i <= Math.ceil(hours / 24) + 1; i++) {
+    const d = addDays(todayStr, -i);
+    const deadline = fromISO(d).getTime() + 86400000 + hours * 3600000;
+    if (now.getTime() < deadline) out.push(d);
+  }
+  return out;
+}
+
+/* --- labels --- */
+function cadenceLabel(habit) {
+  const c = habit.cadence || { type: "daily" };
+  if (c.type === "daily") return "DAILY";
+  if (c.type === "weekdays") {
+    return dayOrder().filter(d => (c.days || []).indexOf(d) !== -1)
+      .map(d => DAY_LABEL[d].slice(0, 2)).join(" ") || "NO DAYS SET";
+  }
+  if (c.type === "n_per_week") return (c.n || 1) + "× PER WEEK";
+  if (c.type === "n_per_month") return (c.n || 1) + "× PER MONTH";
+  return "";
+}
+
+function progressLabel(habit, ev) {
+  const c = habit.cadence || { type: "daily" };
+  if (!ev.current || (c.type !== "n_per_week" && c.type !== "n_per_month")) return "";
+  return ev.current.count + "/" + ev.current.target +
+    (c.type === "n_per_week" ? " THIS WEEK" : " THIS MONTH");
+}
+
+function runLabel(ev) {
+  if (ev.state === "fractured") return '<span class="risk">SIGNAL DEGRADED · RUN ' + ev.run + "</span>";
+  if (ev.run > 0) return "RUN " + ev.run;
+  if (ev.brokeAt) return '<span class="risk">FLATLINED</span>';
+  return "";
+}
+
+/* ============================================================
+   5C. HISTORY QUERIES — read-only views over the log
+   ============================================================ */
+
+/* ISO date -> XP earned that day. Sums the XP stored on each record,
+   so a tier change today never rewrites what yesterday was worth. */
+function xpByDate() {
+  const map = new Map();
+  state.logs.forEach(rows => {
+    rows.forEach(r => map.set(r.date, (map.get(r.date) || 0) + (r.xp || 0)));
+  });
+  return map;
+}
+
+function completionsOn(dateISO) {
+  const out = [];
+  state.logs.forEach(rows => {
+    rows.forEach(r => { if (r.date === dateISO) out.push(r); });
+  });
+  return out;
+}
+
+/* Habits that were owed on a past date and never logged. Only the
+   date-scheduled cadences appear here — a shortfall on an n_per_week
+   habit belongs to its week, not to any one day of it. */
+function missedOn(dateISO, idx) {
+  if (dateISO >= state.today) return [];
+  return state.habits.filter(h => {
+    const c = h.cadence || { type: "daily" };
+    if (c.type !== "daily" && c.type !== "weekdays") return false;
+    if (h.external || h.archived) return false;
+    if (h.createdAt && dateISO < h.createdAt) return false;
+    if (datesFor(idx, h.id).has(dateISO)) return false;
+    return c.type === "daily" || (c.days || []).indexOf(fromISO(dateISO).getDay()) !== -1;
+  });
+}
+
+/* Last 90 days as one cell per day, oldest first. */
+function stripCells(habit, dates, today) {
+  const c = habit.cadence || { type: "daily" };
+  const cells = [];
+  for (let i = 89; i >= 0; i--) {
+    const d = addDays(today, -i);
+    let cls;
+    if (habit.createdAt && d < habit.createdAt) cls = "pre";
+    else if (dates.has(d)) cls = "hit";
+    else if (c.type === "daily" || (c.type === "weekdays" && (c.days || []).indexOf(fromISO(d).getDay()) !== -1)) {
+      cls = d === today ? "open" : "miss";
+    } else cls = "off";
+    cells.push({ date: d, cls: cls });
+  }
+  return cells;
+}
+
+/* Recent periods for the count cadences, newest last. */
+function recentPeriods(habit, dates, today, n) {
+  const all = enumeratePeriods(habit, today);
+  return all.slice(-n).map(p => {
+    const count = countInPeriod(dates, p);
+    return { start: p.start, end: p.end, count: count, target: p.target, met: count >= p.target, open: p.end >= today };
+  });
+}
+/* ============================================================
+   5D. PROGRESSION
+   Levels, bonuses, Street Cred and perks. Derived from the log the
+   same way runs are, with one exception: the XP awarded for a single
+   completion is banked on the record at the moment it is written, so
+   a later tier change or perk unlock never rewrites what a past day
+   was worth. Bonuses and Street Cred are recomputed each time.
+   ============================================================ */
+
+function levelFromXP(xp, k, cap) {
+  return Math.min(cap, Math.floor(Math.sqrt(Math.max(0, xp) / k)) + 1);
+}
+
+function xpAtLevel(level, k) { return k * Math.pow(level - 1, 2); }
+
+function levelBar(xp, k, cap) {
+  const level = levelFromXP(xp, k, cap);
+  if (level >= cap) return { level: level, into: 1, span: 1, atCap: true };
+  const base = xpAtLevel(level, k);
+  const next = xpAtLevel(level + 1, k);
+  return { level: level, into: xp - base, span: next - base, next: next, atCap: false };
+}
+
+function scBar(sc) {
+  const cfg = state.cfg;
+  const level = Math.min(cfg.SC_CAP,
+    Math.floor(Math.pow(Math.max(0, sc) / cfg.SC_CONSTANT, 1 / cfg.SC_EXPONENT)) + 1);
+  const at = L => cfg.SC_CONSTANT * Math.pow(L - 1, cfg.SC_EXPONENT);
+  if (level >= cfg.SC_CAP) return { level: level, into: 1, span: 1, atCap: true };
+  const base = at(level);
+  return { level: level, into: sc - base, span: at(level + 1) - base, atCap: false };
+}
+
+function titleFor(scLevel) {
+  for (const t of SC_TITLES) if (scLevel >= t.at) return t.name;
+  return SC_TITLES[SC_TITLES.length - 1].name;
+}
+
+function hasPerk(id) { return ((state.meta && state.meta.perks) || []).indexOf(id) !== -1; }
+
+/* Does this habit owe a completion on this specific date? Only the
+   date-scheduled cadences can — an n_per_week target belongs to its
+   week, not to any one day inside it. */
+function scheduledOn(habit, dateISO) {
+  if (habit.archived || habit.external) return false;
+  if (habit.createdAt && dateISO < habit.createdAt) return false;
+  const c = habit.cadence || { type: "daily" };
+  if (c.type === "daily") return true;
+  if (c.type === "weekdays") return (c.days || []).indexOf(fromISO(dateISO).getDay()) !== -1;
+  return false;
+}
+
+/* FULL CLEAR. A day with nothing scheduled is not perfect, it is empty. */
+function isPerfectDay(dateISO, idx) {
+  let any = false;
+  for (const h of state.habits) {
+    if (!scheduledOn(h, dateISO)) continue;
+    any = true;
+    if (!datesFor(idx, h.id).has(dateISO)) return false;
+  }
+  return any;
+}
+
+/* CLEAN WEEK. Closed weeks only — an unfinished week has occurrences
+   that have not happened yet, which is not the same as meeting them. */
+function isPerfectWeek(monISO, idx, today) {
+  if (addDays(monISO, 6) >= today) return false;
+  let any = false;
+  for (const h of state.habits) {
+    if (h.archived || h.external) continue;
+    const c = h.cadence || { type: "daily" };
+    if (c.type === "n_per_month") continue;         // spans weeks, cannot be judged weekly
+    const dates = datesFor(idx, h.id);
+    if (c.type === "n_per_week") {
+      if (h.createdAt && monISO < h.createdAt) continue;
+      any = true;
+      let n = 0;
+      for (let i = 0; i < 7; i++) if (dates.has(addDays(monISO, i))) n++;
+      if (n < (c.n || 1)) return false;
+    } else {
+      for (let i = 0; i < 7; i++) {
+        const d = addDays(monISO, i);
+        if (!scheduledOn(h, d)) continue;
+        any = true;
+        if (!dates.has(d)) return false;
+      }
+    }
+  }
+  return any;
+}
+
+/* XP for one completion, with the perk multipliers in force right now.
+   Called at write time; the result is banked on the record. */
+function xpAward(habit, run, attrLevel) {
+  let x = xpFor(habit);
+  if (hasPerk("p_deep_focus") && (habit.tier === "demanding" || habit.tier === "major")) x *= 1.2;
+  if (hasPerk("p_momentum") && run >= 30) x *= 1.1;
+  if (hasPerk("p_chrome") && attrLevel >= 20) x *= 1.05;
+  return Math.round(x);
+}
+
+let progCache = null;
+
+function progression() {
+  if (progCache) return progCache;
+  const cfg = state.cfg;
+  const idx = completionIndex();
+  const today = state.today;
+
+  /* --- banked XP from the records themselves --- */
+  let recordXP = 0, completions = 0;
+  const attrXP = new Map();
+  const activeDays = new Set();
+  const dayXP = new Map();
+  let earliest = today;
+
+  state.logs.forEach(rows => rows.forEach(r => {
+    const x = r.xp || 0;
+    recordXP += x;
+    completions++;
+    attrXP.set(r.attrId, (attrXP.get(r.attrId) || 0) + x);
+    activeDays.add(r.date);
+    dayXP.set(r.date, (dayXP.get(r.date) || 0) + x);
+    if (r.date < earliest) earliest = r.date;
+  }));
+
+  state.habits.forEach(h => { if (h.createdAt && h.createdAt < earliest) earliest = h.createdAt; });
+  const floor = addDays(today, -MAX_LOOKBACK_DAYS);
+  if (earliest < floor) earliest = floor;
+
+  /* --- runs, fractures and run-milestone Street Cred --- */
+  const fractureDays = new Set();
+  let longestEver = 0, runSC = 0;
+  state.habits.forEach(h => {
+    const ev = evaluateHabit(h, datesFor(idx, h.id), today);
+    if (ev.longest > longestEver) longestEver = ev.longest;
+    ev.fractureLog.forEach(d => fractureDays.add(d));
+    ev.segments.forEach(s => {
+      if (s.fractures) return;                     // a fractured run earns no Cred
+      if (s.length >= 7)   runSC += cfg.SC_RUN_7;
+      if (s.length >= 30)  runSC += cfg.SC_RUN_30;
+      if (s.length >= 100) runSC += cfg.SC_RUN_100;
+    });
+  });
+
+  /* --- FULL CLEAR and CLEAN WEEK --- */
+  const perfectDays = [];
+  let d = earliest;
+  while (d <= today) {
+    if (isPerfectDay(d, idx)) perfectDays.push(d);
+    d = addDays(d, 1);
+  }
+
+  const perfectWeeks = [];
+  let w = weekStartISO(earliest);
+  while (w <= today) {
+    if (isPerfectWeek(w, idx, today)) perfectWeeks.push(w);
+    w = addDays(w, 7);
+  }
+
+  const dayBonus = Math.round(cfg.PERFECT_DAY_XP * (hasPerk("p_overclock") ? 1.5 : 1));
+  const bonusXP = perfectDays.length * dayBonus + perfectWeeks.length * cfg.PERFECT_WEEK_XP;
+  const totalXP = recordXP + bonusXP;
+
+  /* --- Street Cred: withheld from any period containing a fracture --- */
+  let sc = runSC;
+  perfectDays.forEach(pd => { if (!fractureDays.has(pd)) sc += cfg.SC_PERFECT_DAY; });
+  perfectWeeks.forEach(pw => {
+    let clean = true;
+    for (let i = 0; i < 7; i++) if (fractureDays.has(addDays(pw, i))) clean = false;
+    if (clean) sc += cfg.SC_PERFECT_WEEK;
+  });
+
+  /* --- attributes and the perks they unlock --- */
+  const attrLevels = new Map();
+  state.attrs.forEach(a => {
+    attrLevels.set(a.id, levelFromXP(attrXP.get(a.id) || 0, cfg.ATTR_CONSTANT, cfg.ATTR_LEVEL_CAP));
+  });
+  let peakAttr = 0;
+  attrLevels.forEach(v => { if (v > peakAttr) peakAttr = v; });
+  const earnedPerks = PERKS.filter(p => peakAttr >= p.at).map(p => p.id);
+
+  const todayPerfect = isPerfectDay(today, idx);
+
+  progCache = {
+    totalXP: totalXP,
+    recordXP: recordXP,
+    bonusXP: bonusXP,
+    char: levelBar(totalXP, cfg.LEVEL_CONSTANT, cfg.LEVEL_CAP),
+    attrXP: attrXP,
+    attrLevels: attrLevels,
+    sc: sc,
+    scBar: scBar(sc),
+    perfectDays: perfectDays,
+    perfectWeeks: perfectWeeks,
+    todayPerfect: todayPerfect,
+    todayXP: (dayXP.get(today) || 0) + (todayPerfect ? dayBonus : 0),
+    dayBonus: dayBonus,
+    earnedPerks: earnedPerks,
+    lifetime: {
+      completions: completions,
+      longestEver: longestEver,
+      daysActive: activeDays.size,
+      perfectDays: perfectDays.length,
+      perfectWeeks: perfectWeeks.length
+    }
+  };
+  return progCache;
+}
+
+/* Perks are permanent once earned, so the unlocked set is stored and
+   only ever grows. Returns the newly unlocked ones. */
+async function syncPerks() {
+  const earned = progression().earnedPerks;
+  if (!state.meta.perks) state.meta.perks = [];
+  const fresh = earned.filter(id => state.meta.perks.indexOf(id) === -1);
+  if (fresh.length) {
+    state.meta.perks = state.meta.perks.concat(fresh);
+    await Store.save("meta", state.meta);
+    invalidateIndex();
+  }
+  return fresh;
+}
+
+/* ============================================================
+   6. RENDER
+   ============================================================ */
+const view = document.getElementById("view");
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+let toastTimer = null;
+function toast(msg, risk) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = "on" + (risk ? " risk" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ""; }, 2600);
+}
+
+async function render() {
+  state.today = todayISO();
+  if (!state.recordsMonth) state.recordsMonth = monthStartISO(state.today);
+  document.getElementById("topmeta").textContent = prettyDate(state.today);
+  Array.prototype.forEach.call(document.querySelectorAll("#nav button"), b => {
+    b.classList.toggle("on", b.dataset.view === state.view);
+  });
+
+  if (state.view === "board") await renderBoard();
+  else if (state.view === "profile") renderProfile();
+  else if (state.view === "records") renderRecords();
+  else await renderConfig();
+  window.scrollTo(0, 0);
+  document.querySelectorAll(".strip").forEach(s => { s.scrollLeft = s.scrollWidth; });
+}
+
+/* ============================================================
+   6C. PROFILE
+   ============================================================ */
+function renderProfile() {
+  const p = progression();
+  const c = p.char;
+  const cfg = state.cfg;
+  const attrs = state.attrs.filter(a => !a.archived);
+
+  let html = '<div class="sechead">PROFILE</div>';
+  html += '<div class="row"><div><div class="lv">' + c.level + '</div><div class="muted">LEVEL</div></div>' +
+    '<div style="text-align:right"><div class="lv">' + p.totalXP + '</div><div class="muted">TOTAL XP</div></div></div>';
+  html += bar(c.into, c.span);
+  html += '<div class="muted">' + (c.atCap ? "MAX LEVEL" :
+    Math.max(0, c.span - c.into) + " XP TO LEVEL " + (c.level + 1)) + "</div>";
+  html += '<div class="muted">' + p.recordXP + " FROM CONTRACTS · " + p.bonusXP + " FROM BONUSES</div>";
+
+  html += '<div class="sechead">STREET CRED</div>';
+  html += '<div class="row"><div><div class="lv">' + p.scBar.level + '</div>' +
+    '<div class="muted">' + titleFor(p.scBar.level) + '</div></div>' +
+    '<div style="text-align:right"><div class="lv">' + p.sc + '</div><div class="muted">CRED</div></div></div>';
+  html += bar(p.scBar.into, p.scBar.span, "struct");
+
+  html += '<div class="sechead">ATTRIBUTES</div>';
+  html += radarSVG(attrs, p);
+
+  html += attrs.map(a => {
+    const xp = p.attrXP.get(a.id) || 0;
+    const lb = levelBar(xp, cfg.ATTR_CONSTANT, cfg.ATTR_LEVEL_CAP);
+    const feeders = state.habits.filter(h => !h.archived && h.attrId === a.id).map(h => h.name);
+    return '<div class="panel">' +
+      '<div class="row"><div class="grow">' + esc(a.name) + "</div>" +
+        '<div class="muted">LV ' + lb.level + " · " + xp + " XP</div></div>" +
+      bar(lb.into, lb.span, "struct") +
+      '<div class="muted">' + (feeders.length ? esc(feeders.join(", ")) : "No contracts feeding this") + "</div>" +
+    "</div>";
+  }).join("");
+
+  html += '<div class="sechead">PERKS</div>';
+  html += PERKS.map(perk => {
+    const on = hasPerk(perk.id);
+    return '<div class="perk' + (on ? " on" : "") + '">' +
+      '<div class="pn">' + esc(perk.name) + (on ? "" : " · LOCKED") + "</div>" +
+      '<div class="pc">' + esc(perk.effect) + "</div>" +
+      '<div class="pc">' + (on ? "UNLOCKED" : "ANY ATTRIBUTE AT LEVEL " + perk.at) + "</div>" +
+    "</div>";
+  }).join("");
+
+  html += '<div class="sechead">LIFETIME</div>';
+  const L = p.lifetime;
+  html += '<div class="panel"><div class="muted">' +
+    "CONTRACTS CLEARED: " + L.completions + "<br>" +
+    "LONGEST RUN EVER: " + L.longestEver + "<br>" +
+    "FULL CLEARS: " + L.perfectDays + "<br>" +
+    "CLEAN WEEKS: " + L.perfectWeeks + "<br>" +
+    "DAYS ACTIVE: " + L.daysActive +
+    "</div></div>";
+
+  view.innerHTML = html;
+}
+
+/* Radar over 3–6 attributes, scaled to the attribute level cap.
+   The viewBox is sized so 13px here renders at roughly 13px on a
+   390px phone — the information floor applies to axis labels too. */
+function radarSVG(attrs, p) {
+  const n = attrs.length;
+  if (n < 3) {
+    return '<p class="muted">The radar needs at least three active attributes.</p>';
+  }
+  const w = 358, h = 264, cx = w / 2, cy = 124, r = 76;
+  const labelR = r + 10;
+  const cap = state.cfg.ATTR_LEVEL_CAP;
+
+  const pt = (i, rad) => {
+    const ang = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+    return [cx + Math.cos(ang) * rad, cy + Math.sin(ang) * rad];
+  };
+  const poly = frac => {
+    const out = [];
+    for (let i = 0; i < n; i++) { const q = pt(i, r * frac); out.push(q[0].toFixed(1) + "," + q[1].toFixed(1)); }
+    return out.join(" ");
+  };
+
+  let svg = '<svg class="radar" viewBox="0 0 ' + w + " " + h + '" xmlns="http://www.w3.org/2000/svg">';
+  [0.25, 0.5, 0.75, 1].forEach(f => { svg += '<polygon class="rgrid" points="' + poly(f) + '"/>'; });
+  for (let i = 0; i < n; i++) {
+    const q = pt(i, r);
+    svg += '<line class="raxis" x1="' + cx + '" y1="' + cy + '" x2="' + q[0].toFixed(1) + '" y2="' + q[1].toFixed(1) + '"/>';
+  }
+
+  const data = [];
+  for (let i = 0; i < n; i++) {
+    const lv = p.attrLevels.get(attrs[i].id) || 1;
+    const q = pt(i, r * Math.max(0.04, lv / cap));
+    data.push(q[0].toFixed(1) + "," + q[1].toFixed(1));
+  }
+  svg += '<polygon class="rdata" points="' + data.join(" ") + '"/>';
+
+  /* First word only, so long names such as "Technical Ability" stay
+     inside the frame. The panels below carry the full name and level. */
+  for (let i = 0; i < n; i++) {
+    const q = pt(i, labelR);
+    const dx = q[0] - cx;
+    const anchor = dx < -6 ? "end" : (dx > 6 ? "start" : "middle");
+    const dy = q[1] < cy - 6 ? -4 : (q[1] > cy + 6 ? 12 : 4);
+    const word = attrs[i].name.trim().split(/\s+/)[0].slice(0, 12).toUpperCase();
+    svg += '<text class="rlabel" x="' + q[0].toFixed(1) + '" y="' + (q[1] + dy).toFixed(1) +
+      '" text-anchor="' + anchor + '">' + esc(word) + "</text>";
+  }
+  return svg + "</svg>";
+}
+
+/* ============================================================
+   6B. RECORDS
+   ============================================================ */
+const MONTH_LABEL = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+                     "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+function renderRecords() {
+  let html =
+    '<div class="tabs">' +
+      '<button data-action="rtab" data-tab="calendar" class="' + (state.recordsTab === "calendar" ? "on" : "") + '">CALENDAR</button>' +
+      '<button data-action="rtab" data-tab="contracts" class="' + (state.recordsTab === "contracts" ? "on" : "") + '">PER CONTRACT</button>' +
+    "</div>";
+
+  html += state.recordsTab === "calendar" ? renderCalendar() : renderPerContract();
+  view.innerHTML = html;
+}
+
+function renderCalendar() {
+  const xp = xpByDate();
+  const pr = progression();
+  const perfect = new Set(pr.perfectDays);
+  const dayTotal = iso => (xp.get(iso) || 0) + (perfect.has(iso) ? pr.dayBonus : 0);
+  const month = state.recordsMonth;
+  const d = fromISO(month);
+  const last = Number(monthEndISO(month).slice(8));
+
+  /* Intensity is scaled to the busiest day of the month on show, so a
+     quiet month still reads rather than sitting uniformly dark. */
+  let peak = 0;
+  for (let i = 1; i <= last; i++) {
+    const t = dayTotal(month.slice(0, 8) + pad(i));
+    if (t > peak) peak = t;
+  }
+
+  const thisMonth = monthStartISO(state.today);
+  let html =
+    '<div class="calnav">' +
+      '<button class="btn small" data-action="month" data-dir="-1">PREV</button>' +
+      '<span class="m">' + MONTH_LABEL[d.getMonth()] + " " + d.getFullYear() + "</span>" +
+      '<button class="btn small" data-action="month" data-dir="1"' +
+        (month >= thisMonth ? " disabled" : "") + ">NEXT</button>" +
+    "</div>";
+
+  html += '<div class="cal">';
+  dayOrder().forEach(n => { html += '<div class="dow">' + DAY_LABEL[n].slice(0, 1) + "</div>"; });
+
+  const lead = (d.getDay() - weekStartDay() + 7) % 7;   // offset to the configured first column
+  for (let i = 0; i < lead; i++) html += '<div class="day pad"></div>';
+
+  for (let i = 1; i <= last; i++) {
+    const iso = month.slice(0, 8) + pad(i);
+    const earned = dayTotal(iso);
+    const lv = earned === 0 ? 0 : Math.min(4, Math.ceil((earned / peak) * 4));
+    const future = iso > state.today;
+    html +=
+      '<button class="day lv' + lv + (earned ? " has" : "") +
+        (iso === state.selectedDay ? " sel" : "") + '"' +
+        ' data-action="day" data-date="' + iso + '"' + (future ? " disabled" : "") +
+        ' title="' + iso + " — " + earned + ' XP">' +
+        (lv ? '<span class="fill" style="opacity:' + (0.15 + lv * 0.18).toFixed(2) + '"></span>' : "") +
+        '<span class="n">' + i + "</span>" +
+      "</button>";
+  }
+  html += "</div>";
+
+  html += renderDayDetail();
+  return html;
+}
+
+function renderDayDetail() {
+  if (!state.selectedDay) {
+    return '<p class="muted" style="margin-top:16px">Tap a day to see what was cleared.</p>';
+  }
+  const idx = completionIndex();
+  const pr = progression();
+  const done = completionsOn(state.selectedDay);
+  const missed = missedOn(state.selectedDay, idx);
+  const perfect = pr.perfectDays.indexOf(state.selectedDay) !== -1;
+  const total = done.reduce((s, r) => s + (r.xp || 0), 0) + (perfect ? pr.dayBonus : 0);
+
+  let html = '<div class="sechead">' + prettyDate(state.selectedDay) + " — " + total + " XP</div>";
+  if (perfect) html += '<div class="fullclear">FULL CLEAR · +' + pr.dayBonus + " XP</div>";
+
+  if (!done.length && !missed.length) {
+    html += '<p class="empty">Nothing scheduled, nothing logged.</p>';
+    return html;
+  }
+
+  if (done.length) {
+    html += done.map(r => {
+      const h = getHabit(r.habitId);
+      return '<div class="panel"><div class="row">' +
+        '<div class="grow"><div>' + esc(h ? h.name : r.habitId) + "</div>" +
+        '<div class="muted">' + esc(attrName(r.attrId)) +
+          (r.source !== "manual" ? " · " + esc(String(r.source).toUpperCase()) : "") + "</div></div>" +
+        '<span class="xp">' + (r.xp || 0) + " XP</span>" +
+        "</div></div>";
+    }).join("");
+  }
+
+  if (missed.length) {
+    html += '<div class="retrodate">MISSED</div>';
+    html += missed.map(h =>
+      '<div class="panel"><div class="risk">' + esc(h.name) + "</div></div>"
+    ).join("");
+  }
+  return html;
+}
+
+function renderPerContract() {
+  const idx = completionIndex();
+  const ordered = state.habits.filter(h => !h.archived).concat(state.habits.filter(h => h.archived));
+
+  if (!ordered.length) return '<p class="empty">No contracts yet.</p>';
+
+  return ordered.map(h => {
+    const dates = datesFor(idx, h.id);
+    const ev = evaluateHabit(h, dates, state.today);
+    const c = h.cadence || { type: "daily" };
+    const counted = c.type === "n_per_week" || c.type === "n_per_month";
+
+    let html = '<div class="sechead">' + esc(h.name) +
+      (h.archived ? " — ARCHIVED" : "") + "</div>";
+
+    html += '<div class="muted">' + esc(cadenceLabel(h)) +
+      " · CURRENT RUN " + ev.run + " · LONGEST " + ev.longest +
+      (ev.state === "fractured" ? ' · <span class="risk">SIGNAL DEGRADED</span>' : "") + "</div>";
+
+    if (counted) {
+      const periods = recentPeriods(h, dates, state.today, 12);
+      html += '<div class="chips">' + periods.map(p =>
+        '<span class="chip' + (p.met ? " met" : "") + '">' +
+          esc(p.start.slice(5)) + " · " + p.count + "/" + p.target + "</span>"
+      ).join("") + "</div>";
+      html += '<div class="muted">LAST ' + periods.length +
+        (c.type === "n_per_week" ? " WEEKS" : " MONTHS") + "</div>";
+    } else {
+      html += '<div class="strip">' + stripCells(h, dates, state.today).map(cell =>
+        '<i class="' + cell.cls + '" title="' + cell.date + '"></i>'
+      ).join("") + "</div>";
+      html += '<div class="muted">LAST 90 DAYS</div>';
+    }
+
+    if (ev.segments.length) {
+      html += ev.segments.slice().reverse().slice(0, 6).map(s =>
+        '<div class="seg">' + s.length + " × " +
+        (s.ended === "current" ? "CURRENT" : '<span class="risk">FLATLINED</span>') +
+        " · " + esc(s.start) + " → " + esc(s.end || s.start) +
+        (s.fractures ? " · " + s.fractures + " FRACTURE" + (s.fractures > 1 ? "S" : "") : "") +
+        "</div>"
+      ).join("");
+    } else {
+      html += '<div class="seg muted">No runs recorded yet.</div>';
+    }
+    return html;
+  }).join("");
+}
+
+/* --- Jobs Board --- */
+async function renderBoard() {
+  const today = state.today;
+  const idx = completionIndex();
+  const active = state.habits.filter(h => !h.archived);
+
+  if (!active.length) {
+    view.innerHTML =
+      '<div class="sechead">TODAY</div>' +
+      '<p class="empty">No contracts yet. Open CONFIG to create your first one.</p>';
+    return;
+  }
+
+  const evals = new Map();
+  active.forEach(h => evals.set(h.id, evaluateHabit(h, datesFor(idx, h.id), today)));
+
+  const pending = [];
+  const cleared = [];
+  active.forEach(h => {
+    const ev = evals.get(h.id);
+    if (ev.doneToday) cleared.push(h);
+    else if (ev.dueToday) pending.push(h);
+  });
+
+  let html = statsBar();
+
+  if (progression().todayPerfect) {
+    html += '<div class="fullclear">FULL CLEAR</div>';
+  }
+
+  html += '<div class="sechead">TODAY — ' + pending.length + " OPEN</div>";
+
+  if (!pending.length) {
+    html += '<p class="empty">All contracts cleared.</p>';
+  } else {
+    html += pending.map(h => card(h, evals.get(h.id), false)).join("");
+  }
+
+  html += renderRetro(idx, active);
+
+  if (cleared.length) {
+    html += '<div class="sechead">CLEARED — ' + cleared.length + "</div>";
+    html += cleared.map(h => card(h, evals.get(h.id), true)).join("");
+  }
+
+  view.innerHTML = html;
+}
+
+/* LOG RETRO — occurrences missed within the backfill window.
+   Full XP, no fracture, recorded as source: "backfill". */
+function renderRetro(idx, active) {
+  const groups = [];
+  backfillDates(new Date()).forEach(d => {
+    const owed = active.filter(h => !h.external && wasDueOn(h, datesFor(idx, h.id), d));
+    if (owed.length) groups.push({ date: d, habits: owed });
+  });
+  if (!groups.length) return "";
+
+  let html = '<div class="sechead">LOG RETRO</div>';
+  html += '<p class="muted">Done but not logged. Full XP, no penalty. Closes ' +
+    backfillWindowHours() + "h after the occurrence.</p>";
+
+  groups.forEach(g => {
+    html += '<div class="retrodate">' + prettyDate(g.date) + "</div>";
+    html += g.habits.map(h =>
+      '<div class="card">' +
+        '<div class="body">' +
+          '<div class="name">' + (h.icon ? esc(h.icon) + " " : "") + esc(h.name) + "</div>" +
+          '<div class="meta">' + esc(attrName(h.attrId)) + " &nbsp; " +
+            '<span class="xp">' + xpFor(h) + " XP</span></div>" +
+        "</div>" +
+        '<div class="side"><button class="btn small" data-action="retro" data-id="' +
+          h.id + '" data-date="' + g.date + '">LOG</button></div>' +
+      "</div>"
+    ).join("");
+  });
+  return html;
+}
+
+function bar(into, span, cls) {
+  const pct = span > 0 ? Math.max(0, Math.min(100, (into / span) * 100)) : 100;
+  return '<div class="bar' + (cls ? " " + cls : "") + '"><i style="width:' + pct.toFixed(1) + '%"></i></div>';
+}
+
+function statsBar() {
+  const p = progression();
+  const c = p.char;
+  return '<div class="stats">' +
+      '<div><div class="lv">' + c.level + "</div>" +
+        '<div class="muted">LEVEL · ' + p.totalXP + " XP</div></div>" +
+      '<div class="sc">STREET CRED ' + p.scBar.level + "<br>" + titleFor(p.scBar.level) +
+        '<br><span class="tx">+' + p.todayXP + " TODAY</span></div>" +
+    "</div>" +
+    bar(c.into, c.span) +
+    '<div class="muted">' +
+      (c.atCap ? "MAX LEVEL" : Math.max(0, c.span - c.into) + " XP TO LEVEL " + (c.level + 1)) +
+    "</div>";
+}
+
+function card(h, ev, isDone) {
+  const p = progression();
+  const cls = "card" + (isDone ? " done" : "") + (h.external ? " ext" : "") +
+    (ev.state === "fractured" ? " frac" : "");
+
+  const bits = [
+    esc(attrName(h.attrId)),
+    '<span class="xp">' + xpAward(h, ev.run, p.attrLevels.get(h.attrId) || 1) + " XP</span>",
+    esc(cadenceLabel(h))
+  ];
+  const prog = progressLabel(h, ev);
+  if (prog) bits.push(esc(prog));
+  const run = runLabel(ev);
+  if (run) bits.push(run);
+  if (h.external) bits.push('<span class="flag">EXTERNAL</span>');
+
+  const body =
+    '<button class="body" data-action="' + (isDone ? "noop" : "complete") + '"' +
+    ' data-id="' + h.id + '"' + (h.external ? " disabled" : "") + ">" +
+      '<div class="name">' + (h.icon ? esc(h.icon) + " " : "") + esc(h.name) + "</div>" +
+      '<div class="meta">' + bits.join(" &nbsp; ") + "</div>" +
+    "</button>";
+
+  const side = isDone
+    ? '<div class="side"><button class="btn small" data-action="undo" data-id="' + h.id + '">UNDO</button></div>'
+    : "";
+
+  return '<div class="' + cls + '">' + body + side + "</div>";
+}
+
+/* --- Config --- */
+async function renderConfig() {
+  let html =
+    '<div class="tabs">' +
+      tabBtn("contracts", "CONTRACTS") +
+      tabBtn("attributes", "ATTRIBUTES") +
+      tabBtn("data", "DATA") +
+    "</div>";
+
+  if (state.editing) html += renderEditor();
+  else if (state.configTab === "contracts") html += renderContracts();
+  else if (state.configTab === "attributes") html += renderAttributes();
+  else html += renderData();
+
+  view.innerHTML = html;
+}
+
+function renderAttributes() {
+  const p = progression();
+  const active = state.attrs.filter(a => !a.archived);
+  const archived = state.attrs.filter(a => a.archived);
+
+  let html = '<p class="muted">Three to six active attributes. Below three the radar is meaningless, above six it stops being readable on a phone.</p>';
+
+  html += active.map(a => {
+    const xp = p.attrXP.get(a.id) || 0;
+    const users = state.habits.filter(h => !h.archived && h.attrId === a.id).length;
+    return '<div class="panel">' +
+      '<div class="row"><input type="text" class="grow" data-attr="' + a.id + '" value="' + esc(a.name) + '">' +
+        '<button class="btn small danger" data-action="attr-archive" data-id="' + a.id + '"' +
+        (active.length <= 3 ? " disabled" : "") + ">ARCHIVE</button></div>" +
+      '<div class="muted">LV ' + (p.attrLevels.get(a.id) || 1) + " · " + xp + " XP · " +
+        users + " CONTRACT" + (users === 1 ? "" : "S") + "</div>" +
+    "</div>";
+  }).join("");
+
+  html += '<div class="btnrow">' +
+    '<button class="btn primary" data-action="attr-save">SAVE NAMES</button>' +
+    '<button class="btn" data-action="attr-new"' + (active.length >= 6 ? " disabled" : "") + ">+ ADD</button>" +
+    "</div>";
+
+  if (archived.length) {
+    html += '<div class="sechead">ARCHIVED</div>';
+    html += archived.map(a =>
+      '<div class="panel"><div class="row"><div class="grow">' + esc(a.name) + "</div>" +
+        '<button class="btn small" data-action="attr-restore" data-id="' + a.id + '"' +
+        (active.length >= 6 ? " disabled" : "") + ">RESTORE</button></div></div>"
+    ).join("");
+  }
+  return html;
+}
+
+function runSummary(h) {
+  const ev = evaluateHabit(h, datesFor(completionIndex(), h.id), state.today);
+  return "CURRENT RUN " + ev.run + " · LONGEST " + ev.longest +
+    (ev.state === "fractured" ? " · SIGNAL DEGRADED" : "");
+}
+
+function tabBtn(id, label) {
+  return '<button data-action="tab" data-tab="' + id + '" class="' +
+    (state.configTab === id && !state.editing ? "on" : "") + '">' + label + "</button>";
+}
+
+function renderContracts() {
+  const active = state.habits.filter(h => !h.archived);
+  const archived = state.habits.filter(h => h.archived);
+
+  let html = '<button class="btn primary full" data-action="new">+ NEW CONTRACT</button>';
+  html += '<div class="sechead">ACTIVE — ' + active.length + "</div>";
+
+  if (!active.length) {
+    html += '<p class="empty">Nothing here yet. A contract is one habit: a name, an attribute it feeds, how often it is due, and what it is worth.</p>';
+  } else {
+    html += active.map((h, i) =>
+      '<div class="panel">' +
+        '<div class="row">' +
+          '<div class="grow">' +
+            '<div class="name">' + (h.icon ? esc(h.icon) + " " : "") + esc(h.name) + "</div>" +
+            '<div class="muted">' + esc(attrName(h.attrId)) + " · " + esc(h.tier.toUpperCase()) +
+              " · " + xpFor(h) + " XP · " + esc(cadenceLabel(h)) +
+              (h.external ? " · EXTERNAL" : "") + "</div>" +
+            '<div class="muted">' + esc(runSummary(h)) + "</div>" +
+          "</div>" +
+        "</div>" +
+        '<div class="btnrow">' +
+          '<button class="btn small" data-action="edit" data-id="' + h.id + '">EDIT</button>' +
+          '<button class="btn small" data-action="move" data-id="' + h.id + '" data-dir="-1"' + (i === 0 ? " disabled" : "") + ">UP</button>" +
+          '<button class="btn small" data-action="move" data-id="' + h.id + '" data-dir="1"' + (i === active.length - 1 ? " disabled" : "") + ">DOWN</button>" +
+          '<button class="btn small danger" data-action="archive" data-id="' + h.id + '">ARCHIVE</button>' +
+        "</div>" +
+      "</div>"
+    ).join("");
+  }
+
+  if (archived.length) {
+    html += '<div class="sechead">ARCHIVED — ' + archived.length + "</div>";
+    html += '<p class="muted">Archived contracts keep their history and can be restored.</p>';
+    html += archived.map(h =>
+      '<div class="panel">' +
+        '<div class="row">' +
+          '<div class="grow"><div class="name">' + esc(h.name) + "</div>" +
+          '<div class="muted">' + esc(attrName(h.attrId)) + "</div></div>" +
+          '<button class="btn small" data-action="restore" data-id="' + h.id + '">RESTORE</button>' +
+        "</div>" +
+      "</div>"
+    ).join("");
+  }
+  return html;
+}
+
+function renderEditor() {
+  const e = state.editing;
+  const c = e.cadence;
+
+  let html = '<div class="sechead">' + (e._isNew ? "NEW CONTRACT" : "EDIT CONTRACT") + "</div>";
+
+  html += "<label>NAME</label>" +
+    '<input type="text" id="f-name" value="' + esc(e.name) + '" placeholder="Morning run" autocomplete="off">';
+
+  html += "<label>ICON</label>" +
+    '<input type="text" id="f-icon" value="' + esc(e.icon) + '" placeholder="Optional glyph or emoji" maxlength="4">';
+
+  html += "<label>ATTRIBUTE</label><select id=\"f-attr\">" +
+    state.attrs.filter(a => !a.archived).map(a =>
+      '<option value="' + a.id + '"' + (a.id === e.attrId ? " selected" : "") + ">" + esc(a.name) + "</option>"
+    ).join("") + "</select>";
+
+  html += "<label>TIER</label><select id=\"f-tier\">" +
+    TIERS.map(t =>
+      '<option value="' + t + '"' + (t === e.tier ? " selected" : "") + ">" +
+      t.toUpperCase() + " — " + state.cfg.XP_TIERS[t] + " XP</option>"
+    ).join("") + "</select>";
+
+  html += "<label>CADENCE</label><select id=\"f-cadence\" data-action=\"cadence-type\">" +
+    [["daily", "Every day"],
+     ["weekdays", "Specific days of the week"],
+     ["n_per_week", "N times per week"],
+     ["n_per_month", "N times per month"]]
+    .map(o => '<option value="' + o[0] + '"' + (c.type === o[0] ? " selected" : "") + ">" + o[1] + "</option>")
+    .join("") + "</select>";
+
+  if (c.type === "weekdays") {
+    html += '<div class="daypick" style="margin-top:10px">' +
+      dayOrder().map(d =>
+        '<button data-action="day" data-day="' + d + '" class="' +
+        ((c.days || []).indexOf(d) !== -1 ? "on" : "") + '">' + DAY_LABEL[d].slice(0, 2) + "</button>"
+      ).join("") + "</div>";
+  }
+
+  if (c.type === "n_per_week" || c.type === "n_per_month") {
+    const max = c.type === "n_per_week" ? 7 : 31;
+    html += '<input type="number" id="f-n" min="1" max="' + max + '" value="' + (c.n || 1) +
+      '" style="margin-top:10px">';
+  }
+
+  html += '<div class="checkline" style="margin-top:16px">' +
+    '<input type="checkbox" id="f-external"' + (e.external ? " checked" : "") + ">" +
+    "<span>Satisfied by TRAINING only — cannot be tapped by hand</span></div>";
+
+  html += "<label>NOTES</label><textarea id=\"f-notes\" placeholder=\"Optional\">" + esc(e.notes) + "</textarea>";
+
+  html += '<div class="btnrow">' +
+    '<button class="btn primary" data-action="save-habit">SAVE</button>' +
+    '<button class="btn" data-action="cancel-habit">CANCEL</button>' +
+    "</div>";
+
+  return html;
+}
+
+function renderData() {
+  let html = '<div class="sechead">DATA DUMP</div>';
+  html += '<p class="muted">Export is the only real backup. Browser storage can be evicted. Do this monthly, and before any move between devices.</p>';
+  html += '<div class="btnrow">' +
+    '<button class="btn primary" data-action="export-file">DOWNLOAD JSON</button>' +
+    '<button class="btn" data-action="export-clip">COPY TO CLIPBOARD</button>' +
+    "</div>";
+
+  html += '<div class="sechead">IMPORT</div>';
+  html += '<p class="muted">Replaces everything currently stored. Export first.</p>';
+  html += '<input type="file" id="f-file" accept="application/json,.json" style="margin-top:10px">';
+  html += "<label>OR PASTE JSON</label>";
+  html += '<textarea id="f-import" placeholder="Paste an export here"></textarea>';
+  html += '<div class="btnrow"><button class="btn danger" data-action="import-text">IMPORT AND REPLACE</button></div>';
+
+  html += '<div class="sechead">STATUS</div>';
+  html += '<div class="panel"><div class="muted">' +
+    "STORAGE BACKEND: " + Store.backend.toUpperCase() + "<br>" +
+    "SCHEMA VERSION: " + SCHEMA_VERSION + "<br>" +
+    "CONTRACTS: " + state.habits.filter(h => !h.archived).length + " ACTIVE, " +
+      state.habits.filter(h => h.archived).length + " ARCHIVED<br>" +
+    "ATTRIBUTES: " + state.attrs.length +
+    "</div></div>";
+
+  return html;
+}
+
+/* ============================================================
+   7. EDITOR ACTIONS
+   ============================================================ */
+function blankHabit() {
+  const firstAttr = state.attrs.filter(a => !a.archived)[0];
+  return {
+    _isNew: true,
+    id: null,
+    name: "",
+    icon: "",
+    attrId: firstAttr ? firstAttr.id : null,
+    cadence: { type: "daily" },
+    tier: "standard",
+    notes: "",
+    external: false,
+    archived: false,
+    createdAt: todayISO()
+  };
+}
+
+/* Pull whatever is currently typed into the draft, so a cadence
+   change or day toggle does not lose the rest of the form. */
+function harvestEditor() {
+  const e = state.editing;
+  if (!e) return;
+  const g = id => document.getElementById(id);
+  if (g("f-name"))     e.name = g("f-name").value;
+  if (g("f-icon"))     e.icon = g("f-icon").value;
+  if (g("f-attr"))     e.attrId = g("f-attr").value;
+  if (g("f-tier"))     e.tier = g("f-tier").value;
+  if (g("f-notes"))    e.notes = g("f-notes").value;
+  if (g("f-external")) e.external = g("f-external").checked;
+  if (g("f-n"))        e.cadence.n = Math.max(1, Number(g("f-n").value) || 1);
+}
+
+async function saveHabit() {
+  harvestEditor();
+  const e = state.editing;
+
+  if (!e.name.trim()) { toast("A contract needs a name.", true); return; }
+  if (!e.attrId)      { toast("A contract needs an attribute.", true); return; }
+  if (e.cadence.type === "weekdays" && !(e.cadence.days || []).length) {
+    toast("Pick at least one day.", true); return;
+  }
+
+  const record = {
+    id: e.id || makeId("h_"),
+    name: e.name.trim(),
+    icon: e.icon.trim(),
+    attrId: e.attrId,
+    cadence: e.cadence,
+    tier: e.tier,
+    notes: e.notes.trim(),
+    external: !!e.external,
+    archived: !!e.archived,
+    createdAt: e.createdAt || todayISO()
+  };
+
+  if (e.id) {
+    const i = state.habits.findIndex(h => h.id === e.id);
+    state.habits[i] = record;
+  } else {
+    state.habits.push(record);
+  }
+
+  await Store.save("habits", state.habits);
+  state.editing = null;
+  toast(e.id ? "Contract updated." : "Contract created.");
+  render();
+}
+
+async function setArchived(id, flag) {
+  const h = getHabit(id);
+  if (!h) return;
+  h.archived = flag;
+  await Store.save("habits", state.habits);
+  toast(flag ? "Archived. History kept." : "Restored.");
+  render();
+}
+
+async function moveHabit(id, dir) {
+  const active = state.habits.filter(h => !h.archived);
+  const pos = active.findIndex(h => h.id === id);
+  const swapWith = active[pos + dir];
+  if (!swapWith) return;
+  const a = state.habits.indexOf(active[pos]);
+  const b = state.habits.indexOf(swapWith);
+  const tmp = state.habits[a];
+  state.habits[a] = state.habits[b];
+  state.habits[b] = tmp;
+  await Store.save("habits", state.habits);
+  render();
+}
+
+/* ============================================================
+   8. EXPORT / IMPORT
+   ============================================================ */
+async function buildExport() {
+  const data = {
+    cfg: state.cfg,
+    attrs: state.attrs,
+    habits: state.habits,
+    meta: state.meta,
+    logs: {}
+  };
+  const keys = await Store.listKeys("log:");
+  for (const k of keys) {
+    const rows = await Store.load(k);
+    if (rows && rows.length) data.logs[k.slice(4)] = rows;
+  }
+  return {
+    app: "night-city-os",
+    schemaVersion: SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    data: data
+  };
+}
+
+async function exportFile() {
+  const json = JSON.stringify(await buildExport(), null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "night-city-os-" + todayISO() + ".json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast("Export downloaded.");
+}
+
+async function exportClipboard() {
+  const json = JSON.stringify(await buildExport());
+  try {
+    await navigator.clipboard.writeText(json);
+    toast("Export copied to clipboard.");
+  } catch (err) {
+    const ta = document.getElementById("f-import");
+    if (ta) { ta.value = json; ta.select(); }
+    toast("Clipboard blocked. Export placed in the text box — copy it manually.", true);
+  }
+}
+
+async function importJSON(text) {
+  let parsed;
+  try { parsed = JSON.parse(text); }
+  catch (err) { toast("That is not valid JSON.", true); return; }
+
+  const d = parsed && parsed.data;
+  if (!parsed || parsed.app !== "night-city-os" || !d || !Array.isArray(d.habits) || !Array.isArray(d.attrs)) {
+    toast("Not a NIGHT CITY OS export.", true);
+    return;
+  }
+  if (parsed.schemaVersion !== SCHEMA_VERSION) {
+    toast("Export is schema v" + parsed.schemaVersion + ", app is v" + SCHEMA_VERSION + ". Import stopped.", true);
+    return;
+  }
+  if (!confirm("Replace all current data with this export? This cannot be undone.")) return;
+
+  const oldKeys = await Store.listKeys("log:");
+  for (const k of oldKeys) await Store.drop(k);
+
+  state.cfg   = Object.assign(clone(DEFAULT_CFG), d.cfg || {});
+  state.attrs = d.attrs;
+  state.habits = d.habits;
+  state.meta  = Object.assign(clone(DEFAULT_META), d.meta || {});
+  state.logs.clear();
+  invalidateIndex();
+
+  await Store.save("cfg", state.cfg);
+  await Store.save("attrs", state.attrs);
+  await Store.save("habits", state.habits);
+  await Store.save("meta", state.meta);
+
+  const logs = d.logs || {};
+  for (const wk in logs) {
+    if (Object.prototype.hasOwnProperty.call(logs, wk)) {
+      state.logs.set(wk, logs[wk]);
+      await Store.save("log:" + wk, logs[wk]);
+    }
+  }
+
+  state.view = "board";
+  toast("Import complete.");
+  render();
+}
+
+/* ============================================================
+   9. EVENTS
+   ============================================================ */
+document.addEventListener("click", async function (ev) {
+  const el = ev.target.closest("[data-action]");
+  if (!el || el.disabled) return;
+  const a = el.dataset.action;
+
+  if (a === "nav") {
+    state.view = el.dataset.view;
+    state.editing = null;
+    render();
+  } else if (a === "tab") {
+    state.configTab = el.dataset.tab;
+    state.editing = null;
+    render();
+  } else if (a === "rtab") {
+    state.recordsTab = el.dataset.tab;
+    render();
+  } else if (a === "month") {
+    const d = fromISO(state.recordsMonth);
+    state.recordsMonth = toISO(new Date(d.getFullYear(), d.getMonth() + Number(el.dataset.dir), 1));
+    state.selectedDay = null;
+    render();
+  } else if (a === "day") {
+    state.selectedDay = state.selectedDay === el.dataset.date ? null : el.dataset.date;
+    render();
+  } else if (a === "complete") {
+    await completeHabit(el.dataset.id, state.today, "manual");
+  } else if (a === "retro") {
+    await completeHabit(el.dataset.id, el.dataset.date, "backfill");
+  } else if (a === "undo") {
+    await undoCompletion(el.dataset.id, state.today);
+  } else if (a === "new") {
+    state.editing = blankHabit();
+    render();
+  } else if (a === "edit") {
+    const h = getHabit(el.dataset.id);
+    state.editing = JSON.parse(JSON.stringify(h));
+    render();
+  } else if (a === "archive") {
+    await setArchived(el.dataset.id, true);
+  } else if (a === "restore") {
+    await setArchived(el.dataset.id, false);
+  } else if (a === "move") {
+    await moveHabit(el.dataset.id, Number(el.dataset.dir));
+  } else if (a === "save-habit") {
+    await saveHabit();
+  } else if (a === "cancel-habit") {
+    state.editing = null;
+    render();
+  } else if (a === "day") {
+    harvestEditor();
+    const d = Number(el.dataset.day);
+    const days = state.editing.cadence.days || [];
+    const i = days.indexOf(d);
+    if (i === -1) days.push(d); else days.splice(i, 1);
+    state.editing.cadence.days = days;
+    render();
+  } else if (a === "attr-save") {
+    document.querySelectorAll("[data-attr]").forEach(inp => {
+      const at = getAttr(inp.dataset.attr);
+      if (at && inp.value.trim()) at.name = inp.value.trim();
+    });
+    await Store.save("attrs", state.attrs);
+    toast("Attribute names saved.");
+    render();
+  } else if (a === "attr-new") {
+    const id = makeId("a_");
+    state.attrs.push({ id: id, name: "New attribute", colour: null, archived: false });
+    await Store.save("attrs", state.attrs);
+    render();
+  } else if (a === "attr-archive") {
+    const at = getAttr(el.dataset.id);
+    const users = state.habits.filter(h => !h.archived && h.attrId === at.id);
+    if (users.length) {
+      toast(users.length + " active contract" + (users.length === 1 ? "" : "s") + " still feed this. Move them first.", true);
+      return;
+    }
+    at.archived = true;
+    await Store.save("attrs", state.attrs);
+    toast("Archived. Past XP stays attributed to it.");
+    render();
+  } else if (a === "attr-restore") {
+    getAttr(el.dataset.id).archived = false;
+    await Store.save("attrs", state.attrs);
+    render();
+  } else if (a === "export-file") {
+    await exportFile();
+  } else if (a === "export-clip") {
+    await exportClipboard();
+  } else if (a === "import-text") {
+    const ta = document.getElementById("f-import");
+    if (ta && ta.value.trim()) await importJSON(ta.value);
+    else toast("Paste an export first, or choose a file.", true);
+  }
+});
+
+document.addEventListener("change", async function (ev) {
+  const el = ev.target;
+
+  if (el.dataset && el.dataset.action === "cadence-type") {
+    harvestEditor();
+    const type = el.value;
+    const old = state.editing.cadence || {};
+    if (type === "weekdays") state.editing.cadence = { type: type, days: old.days || [] };
+    else if (type === "n_per_week")  state.editing.cadence = { type: type, n: old.n || 3 };
+    else if (type === "n_per_month") state.editing.cadence = { type: type, n: old.n || 8 };
+    else state.editing.cadence = { type: "daily" };
+    render();
+  }
+
+  if (el.id === "f-file" && el.files && el.files[0]) {
+    const text = await el.files[0].text();
+    await importJSON(text);
+  }
+});
+
+/* ============================================================
+   10. BOOT
+   ============================================================ */
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+async function boot() {
+  state.cfg = await Store.load("cfg");
+  if (!state.cfg) { state.cfg = clone(DEFAULT_CFG); await Store.save("cfg", state.cfg); }
+  else state.cfg = Object.assign(clone(DEFAULT_CFG), state.cfg);
+
+  state.attrs = await Store.load("attrs");
+  if (!state.attrs) { state.attrs = clone(DEFAULT_ATTRS); await Store.save("attrs", state.attrs); }
+
+  state.habits = await Store.load("habits");
+  if (!state.habits) { state.habits = []; await Store.save("habits", state.habits); }
+
+  state.meta = await Store.load("meta");
+  if (!state.meta) { state.meta = clone(DEFAULT_META); await Store.save("meta", state.meta); }
+  if (!state.meta.records) state.meta.records = {};
+
+  await loadAllLogs();
+  await syncPerks();
+  await snapshotTotals();
+  render();
+}
+
+boot();
+</script>
+</body>
+</html>
