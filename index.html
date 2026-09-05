@@ -170,7 +170,9 @@ main.screen-in { animation: rise var(--t-screen) both; }
   display: flex;
   background: var(--bg-panel);
   border-top: 1px solid var(--line-weak);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* Hug the home indicator rather than clearing it entirely — the full
+     inset leaves a visible strip of dead panel under the labels. */
+  padding-bottom: max(0px, calc(env(safe-area-inset-bottom) - 14px));
 }
 .navbar button {
   flex: 1; min-height: 56px;
@@ -483,61 +485,6 @@ textarea { min-height: 76px; resize: vertical; }
 }
 @keyframes slam { from { transform: scale(1.6); opacity: 0; } to { transform: none; opacity: 1; } }
 
-/* --- workout grid --- */
-.woprog {
-  margin-bottom: 14px; padding-bottom: 8px;
-  border-bottom: 1px solid var(--line-weak);
-  font: 600 13px/1 var(--f-ui); letter-spacing: .14em; text-transform: uppercase;
-  color: var(--text-secondary);
-}
-.woprog span { font-family: var(--f-num); font-size: 15px; color: var(--earn); }
-
-.exblock {
-  background: var(--bg-panel);
-  border: 1.5px solid var(--line-weak);
-  clip-path: var(--cut-12);
-  padding: 13px 13px 4px;
-  margin-bottom: 14px;
-}
-.exblock.complete { border-color: var(--earn-dim); }
-.exhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.exname { font: 600 18px/1.2 var(--f-ui); }
-.exblock.complete .exname { color: var(--earn); }
-.exsub {
-  margin-top: 3px;
-  font: 600 13px/1.4 var(--f-ui); letter-spacing: .1em; text-transform: uppercase;
-  color: var(--text-secondary);
-}
-
-.whead, .wrow { display: grid; gap: 6px; align-items: center; }
-.whead { margin: 12px 0 4px; }
-.wrow { margin-bottom: 6px; position: relative; }
-.gh { font: 600 13px/1 var(--f-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--struct); text-align: center; }
-.gn { font: 500 15px/1 var(--f-num); color: var(--text-secondary); text-align: center; }
-.gi {
-  width: 100%; min-height: 48px; padding: 8px 4px;
-  background: var(--bg-inset); border: 1.5px solid var(--line-weak);
-  color: var(--text-primary);
-  font: 500 17px/1 var(--f-num); text-align: center;
-  clip-path: var(--cut-8);
-  -moz-appearance: textfield;
-}
-.gi::-webkit-outer-spin-button, .gi::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.gi::placeholder { color: var(--text-ghost); }
-.wrow.done .gi { opacity: .45; }
-.gt {
-  min-height: 48px; width: 100%;
-  background: none; border: 1.5px solid var(--line-weak);
-  color: var(--text-ghost);
-  clip-path: var(--cut-8);
-  font-size: 20px; line-height: 1;
-  transition: color var(--t-tap), border-color var(--t-tap);
-}
-.gt.on { border-color: var(--earn); color: var(--earn); background: var(--earn-glow); }
-
-.pgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; margin-top: 10px; }
-.pgrid .gh { margin-bottom: 4px; }
-
 /* --- completion effects ---
    Every one is a one-shot. Nothing loops, and all of it is disabled
    under prefers-reduced-motion by the block further down. */
@@ -640,9 +587,6 @@ textarea { min-height: 76px; resize: vertical; }
   </button>
   <button data-action="nav" data-view="config">
     <svg viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2.5"/><circle cx="16" cy="17" r="2.5"/></svg>CONFIG
-  </button>
-  <button data-action="nav" data-view="training">
-    <svg viewBox="0 0 24 24"><path d="M2 10v4M6 8v8M18 8v8M22 10v4"/><path d="M6 12h12"/></svg>TRAINING
   </button>
 </nav>
 
@@ -846,7 +790,6 @@ const DEFAULT_CFG = {
   SC_RUN_100: 300,
   WEEK_START_DAY: 0,
   AMBIENT: false,
-  WEIGHT_UNIT: "lb",
   UNIT_PATCH: false
 };
 
@@ -980,9 +923,6 @@ const state = {
   logs: new Map(),        // weekKey -> array of completion records
   view: "board",
   configTab: "contracts",
-  exercises: [],
-  plan: null,             // one exercise list per weekday
-  wlogs: new Map(),       // weekKey -> array of day records
   trainTab: "today",
   planDay: null,
   pickEx: false,
@@ -1063,7 +1003,7 @@ function datesFor(idx, habitId) { return idx.get(habitId) || new Set(); }
 async function completeHabit(habitId, dateISO, source) {
   const h = getHabit(habitId);
   if (!h || h.archived) return;
-  if (h.external && source !== "workout") return;
+  if (h.external) return;
 
   if (source === "backfill") {
     if (backfillDates(new Date()).indexOf(dateISO) === -1) {
@@ -1699,182 +1639,6 @@ async function syncPerks() {
 }
 
 /* ============================================================
-   5E. TRAINING
-   Standalone. It shares the storage adapter, the ISO week keys and
-   the visual language, and nothing else — no XP, no contracts, no
-   streaks, no perks. A workout is a plan for a weekday plus a record
-   of what actually got done on a date.
-   ============================================================ */
-
-const EX_KINDS = [
-  { id: "weight_reps", name: "Weight and reps", cols: ["weight", "reps"] },
-  { id: "reps",        name: "Reps only",       cols: ["reps"] },
-  { id: "duration",    name: "Time",            cols: ["min", "sec"] }
-];
-
-function colLabel(c) {
-  if (c === "weight") return state.cfg.WEIGHT_UNIT.toUpperCase();
-  if (c === "reps") return "REPS";
-  return c.toUpperCase();
-}
-
-function exKind(ex) {
-  return EX_KINDS.find(k => k.id === (ex && ex.kind)) || EX_KINDS[2];
-}
-
-function getExercise(id) { return state.exercises.find(x => x.id === id) || null; }
-function exName(id) { const x = getExercise(id); return x ? x.name : "REMOVED"; }
-
-/* --- the plan: one list of exercises per weekday --- */
-function blankPlan() {
-  const days = {};
-  for (let d = 0; d < 7; d++) days[d] = { name: "", items: [] };
-  return { days: days };
-}
-
-function planFor(dow) {
-  if (!state.plan || !state.plan.days) state.plan = blankPlan();
-  if (!state.plan.days[dow]) state.plan.days[dow] = { name: "", items: [] };
-  return state.plan.days[dow];
-}
-
-async function savePlan() { await Store.save("wk:plan", state.plan); }
-
-/* --- day records, bucketed by ISO week like everything else --- */
-function dayRecord(dateISO) {
-  const rows = state.wlogs.get(isoWeekOf(dateISO)) || [];
-  return rows.find(r => r.date === dateISO) || null;
-}
-
-/* Built from the plan but never saved, so opening TRAINING on a rest
-   day or a day you skip does not litter the history with blanks. It
-   is written only once you actually touch something. */
-function virtualDay(dateISO) {
-  const dow = fromISO(dateISO).getDay();
-  const day = planFor(dow);
-  return {
-    date: dateISO,
-    dow: dow,
-    name: day.name || "",
-    virtual: true,
-    items: (day.items || []).map(it => ({
-      itemId: it.id,
-      exId: it.exId,
-      target: { sets: it.sets || 3, reps: it.reps || null, weight: it.weight || null, seconds: it.seconds || null },
-      sets: newSets(it.sets || 3)
-    }))
-  };
-}
-
-function newSets(n) {
-  const out = [];
-  for (let i = 0; i < n; i++) out.push({ done: false });
-  return out;
-}
-
-function currentDay(dateISO) { return dayRecord(dateISO) || virtualDay(dateISO); }
-
-/* Promotes today's virtual record into stored history on first touch. */
-async function materializeDay(dateISO) {
-  let rec = dayRecord(dateISO);
-  if (rec) return rec;
-  rec = virtualDay(dateISO);
-  delete rec.virtual;
-  const wk = isoWeekOf(dateISO);
-  if (!state.wlogs.has(wk)) state.wlogs.set(wk, (await Store.load("wk:log:" + wk)) || []);
-  state.wlogs.get(wk).push(rec);
-  await saveDay(dateISO);
-  return rec;
-}
-
-async function loadAllWorkouts() {
-  const keys = await Store.listKeys("wk:log:");
-  for (const k of keys) state.wlogs.set(k.slice(7), (await Store.load(k)) || []);
-}
-
-async function saveDay(dateISO) {
-  await Store.save("wk:log:" + isoWeekOf(dateISO), state.wlogs.get(isoWeekOf(dateISO)) || []);
-}
-
-/* Typing must not hit storage on every keystroke. */
-let daySaveTimer = null;
-function scheduleDaySave(dateISO) {
-  clearTimeout(daySaveTimer);
-  daySaveTimer = setTimeout(() => { saveDay(dateISO); }, 400);
-}
-
-function entryComplete(entry) {
-  return entry.sets.length > 0 && entry.sets.every(s => s.done);
-}
-
-function dayIsComplete(rec) {
-  return rec && rec.items.length > 0 && rec.items.every(entryComplete);
-}
-
-function doneCount(rec) {
-  return rec.items.filter(entryComplete).length;
-}
-
-/* --- history queries --- */
-function allDays() {
-  let out = [];
-  state.wlogs.forEach(rows => { out = out.concat(rows); });
-  return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-}
-
-function setText(exId, s) {
-  const k = exKind(getExercise(exId)).id;
-  if (k === "weight_reps") {
-    if (s.weight == null && s.reps == null) return "—";
-    return (s.weight != null ? s.weight + state.cfg.WEIGHT_UNIT : "BW") + " × " + (s.reps != null ? s.reps : "?");
-  }
-  if (k === "reps") return (s.reps != null ? s.reps : "?") + " reps";
-  const sec = s.seconds || 0;
-  return Math.floor(sec / 60) + ":" + pad(sec % 60);
-}
-
-/* What was done last time — the number that matters mid-workout. */
-function lastPerformance(exId, beforeDate) {
-  for (const r of allDays()) {
-    if (r.date >= beforeDate) continue;
-    const e = (r.items || []).find(i => i.exId === exId);
-    if (!e) continue;
-    const done = e.sets.filter(s => s.done);
-    if (done.length) return { date: r.date, sets: done };
-  }
-  return null;
-}
-
-/* Personal bests are derived from the log, never stored. */
-function bestFor(exId) {
-  const k = exKind(getExercise(exId)).id;
-  let best = null;
-  allDays().forEach(r => {
-    (r.items || []).forEach(e => {
-      if (e.exId !== exId) return;
-      e.sets.forEach(s => {
-        if (!s.done) return;
-        const score = k === "weight_reps" ? (s.weight || 0)
-                    : k === "reps" ? (s.reps || 0)
-                    : (s.seconds || 0);
-        if (score > 0 && (!best || score > best.score)) best = { score: score, set: s, date: r.date };
-      });
-    });
-  });
-  return best;
-}
-
-function writeField(entry, si, field, raw) {
-  const v = raw === "" ? null : Number(raw);
-  const set = entry.sets[si];
-  if (v !== null && isNaN(v)) return;
-  if (field === "weight") set.weight = v;
-  else if (field === "reps") set.reps = v;
-  else if (field === "min") set.seconds = (v || 0) * 60 + ((set.seconds || 0) % 60);
-  else if (field === "sec") set.seconds = Math.floor((set.seconds || 0) / 60) * 60 + (v || 0);
-}
-
-/* ============================================================
    6. RENDER
    ============================================================ */
 const view = document.getElementById("view");
@@ -1951,7 +1715,6 @@ async function render() {
   }
 
   if (state.view === "board") await renderBoard();
-  else if (state.view === "training") renderTraining();
   else if (state.view === "profile") renderProfile();
   else if (state.view === "records") renderRecords();
   else await renderConfig();
@@ -2082,255 +1845,6 @@ function radarSVG(attrs, p) {
       '" text-anchor="' + anchor + '" fill="' + attrColour(attrs[i].id) + '">' + esc(word) + "</text>";
   }
   return svg + "</svg>";
-}
-
-/* ============================================================
-   6E. TRAINING
-   ============================================================ */
-function renderTraining() {
-  let html =
-    '<div class="tabs">' +
-      ttab("today", "TODAY") + ttab("plan", "PLAN") + ttab("history", "HISTORY") +
-    "</div>";
-  html += state.trainTab === "plan" ? renderPlan()
-        : state.trainTab === "history" ? renderTrainHistory()
-        : renderWorkout();
-  view.innerHTML = html;
-}
-
-function ttab(id, label) {
-  return '<button data-action="ttab" data-tab="' + id + '" class="' +
-    (state.trainTab === id ? "on" : "") + '">' + label + "</button>";
-}
-
-/* --- the workout grid ---
-   This screen never re-renders while it is being used. Every input
-   writes straight into state and every tick updates the DOM in place,
-   because re-rendering mid-set would drop focus and wipe a half-typed
-   number in the middle of a working set. */
-function renderWorkout() {
-  const rec = currentDay(state.today);
-  const dow = fromISO(state.today).getDay();
-
-  let html = '<div class="sechead">' + DAY_LABEL[dow] + " · " +
-    esc(rec.name || planFor(dow).name || "UNNAMED") + "</div>";
-
-  if (!rec.items.length) {
-    return html + '<p class="empty">Nothing planned for ' + DAY_LABEL[dow] +
-      '. Open PLAN to build this day, or add something below.</p>' +
-      '<div class="btnrow"><button class="btn" data-action="wo-addex">+ ADD EXERCISE</button></div>';
-  }
-
-  html += '<div class="woprog"><span id="wo-count">' + doneCount(rec) + " / " + rec.items.length +
-    "</span> EXERCISES CLEARED</div>";
-
-  rec.items.forEach((entry, i) => {
-    const ex = getExercise(entry.exId);
-    const kind = exKind(ex);
-    const cols = kind.cols;
-    const tmpl = "32px " + cols.map(() => "1fr").join(" ") + " 52px";
-    const prev = lastPerformance(entry.exId, state.today);
-
-    html += '<div class="exblock' + (entryComplete(entry) ? " complete" : "") + '" data-i="' + i + '">';
-    html += '<div class="exhead"><div class="exname">' + esc(ex ? ex.name : "REMOVED") + "</div>" +
-      '<div class="exsub">' + entry.sets.length + " SETS</div></div>";
-
-    const tgt = entry.target || {};
-    const bits = [];
-    if (tgt.reps) bits.push("TARGET " + tgt.reps + " REPS");
-    if (tgt.weight) bits.push(tgt.weight + state.cfg.WEIGHT_UNIT);
-    if (prev) bits.push("LAST " + prev.date.slice(5) + " · " + prev.sets.map(s => setText(entry.exId, s)).join(" / "));
-    if (bits.length) html += '<div class="exsub">' + esc(bits.join(" · ")) + "</div>";
-
-    html += '<div class="whead" style="grid-template-columns:' + tmpl + '">' +
-      '<div class="gh">SET</div>' +
-      cols.map(c => '<div class="gh">' + colLabel(c) + "</div>").join("") +
-      '<div class="gh"></div></div>';
-
-    entry.sets.forEach((set, si) => {
-      html += '<div class="wrow' + (set.done ? " done" : "") + '" style="grid-template-columns:' + tmpl + '">' +
-        '<div class="gn">' + (si + 1) + "</div>" +
-        cols.map(c => {
-          const val = fieldValue(set, c);
-          const ph = fieldTarget(entry, c, prev, si);
-          return '<input class="gi" inputmode="numeric" type="number" step="any" min="0"' +
-            ' data-i="' + i + '" data-s="' + si + '" data-f="' + c + '"' +
-            ' value="' + (val === null ? "" : val) + '"' +
-            ' placeholder="' + (ph === null ? "" : ph) + '">';
-        }).join("") +
-        '<button class="gt' + (set.done ? " on" : "") + '" data-action="set-done"' +
-          ' data-i="' + i + '" data-s="' + si + '" aria-label="Mark set complete">&#10003;</button>' +
-      "</div>";
-    });
-
-    html += '<div class="btnrow">' +
-      '<button class="btn small" data-action="set-add" data-i="' + i + '">+ SET</button>' +
-      '<button class="btn small danger" data-action="wo-drop" data-i="' + i + '">REMOVE</button>' +
-      "</div></div>";
-  });
-
-  html += '<div class="btnrow">' +
-    '<button class="btn" data-action="wo-addex">+ ADD EXERCISE</button>' +
-    '<button class="btn danger" data-action="wo-reset">RESET TO PLAN</button>' +
-    "</div>";
-
-  if (state.pickEx) html += exercisePicker("wo-pick");
-  return html;
-}
-
-function fieldValue(set, c) {
-  if (c === "weight") return set.weight == null ? null : set.weight;
-  if (c === "reps") return set.reps == null ? null : set.reps;
-  if (c === "min") return set.seconds == null ? null : Math.floor(set.seconds / 60);
-  if (c === "sec") return set.seconds == null ? null : set.seconds % 60;
-  return null;
-}
-
-/* Placeholder shows the target, or failing that what was done last
-   time — and tapping the tick with an empty box adopts it. */
-function fieldTarget(entry, c, prev, si) {
-  const t = entry.target || {};
-  if (c === "weight" && t.weight) return t.weight;
-  if (c === "reps" && t.reps) return t.reps;
-  if (prev && prev.sets.length) {
-    const ref = prev.sets[Math.min(si, prev.sets.length - 1)];
-    if (c === "weight" && ref.weight != null) return ref.weight;
-    if (c === "reps" && ref.reps != null) return ref.reps;
-    if (c === "min" && ref.seconds != null) return Math.floor(ref.seconds / 60);
-    if (c === "sec" && ref.seconds != null) return ref.seconds % 60;
-  }
-  if (c === "min" && t.seconds) return Math.floor(t.seconds / 60);
-  if (c === "sec" && t.seconds) return t.seconds % 60;
-  return null;
-}
-
-function exercisePicker(action) {
-  const lib = state.exercises.filter(x => !x.archived);
-  let html = '<div class="sechead">PICK AN EXERCISE</div>';
-  if (!lib.length) return html + '<p class="empty">The library is empty. Add one in PLAN.</p>';
-  html += lib.map(x =>
-    '<button class="btn full" style="margin-bottom:8px" data-action="' + action + '" data-id="' + x.id + '">' +
-      esc(x.name) + "</button>"
-  ).join("");
-  return html + '<div class="btnrow"><button class="btn" data-action="pick-close">CANCEL</button></div>';
-}
-
-/* --- plan editor --- */
-function renderPlan() {
-  const sel = state.planDay == null ? fromISO(state.today).getDay() : state.planDay;
-  const day = planFor(sel);
-
-  let html = '<div class="daypick" style="margin-bottom:14px">' + dayOrder().map(d =>
-    '<button data-action="plan-day" data-day="' + d + '" class="' + (d === sel ? "on" : "") + '">' +
-      DAY_LABEL[d].slice(0, 2) + "</button>"
-  ).join("") + "</div>";
-
-  html += "<label>DAY NAME</label>";
-  html += '<input type="text" id="f-day-name" data-day="' + sel + '" value="' + esc(day.name || "") +
-    '" placeholder="Push, Legs, Rest…" autocomplete="off">';
-
-  html += '<div class="sechead">' + DAY_LABEL[sel] + " — " + day.items.length + " EXERCISES</div>";
-
-  if (!day.items.length) {
-    html += '<p class="empty">Empty day. Add exercises below, or leave it as a rest day.</p>';
-  }
-
-  html += day.items.map((it, i) => {
-    const ex = getExercise(it.exId);
-    const kind = exKind(ex);
-    return '<div class="panel">' +
-      '<div class="row"><div class="grow"><div class="exname">' + esc(ex ? ex.name : "REMOVED") + "</div>" +
-        '<div class="exsub">' + esc(kind.name.toUpperCase()) + "</div></div>" +
-        '<button class="btn small danger" data-action="pi-del" data-i="' + i + '">REMOVE</button></div>' +
-      '<div class="pgrid">' +
-        '<div><div class="gh">SETS</div><input class="gi" type="number" min="1" max="20" data-pi="' + i +
-          '" data-f="sets" value="' + (it.sets || 3) + '"></div>' +
-        (kind.id === "duration"
-          ? '<div><div class="gh">SECONDS</div><input class="gi" type="number" min="0" data-pi="' + i +
-              '" data-f="seconds" value="' + (it.seconds == null ? "" : it.seconds) + '" placeholder="60"></div>'
-          : '<div><div class="gh">REPS</div><input class="gi" type="number" min="0" data-pi="' + i +
-              '" data-f="reps" value="' + (it.reps == null ? "" : it.reps) + '" placeholder="8"></div>') +
-        (kind.id === "weight_reps"
-          ? '<div><div class="gh">' + colLabel("weight") + '</div><input class="gi" type="number" min="0" step="any" data-pi="' + i +
-              '" data-f="weight" value="' + (it.weight == null ? "" : it.weight) + '" placeholder="135"></div>'
-          : "") +
-      "</div>" +
-      '<div class="btnrow">' +
-        '<button class="btn small" data-action="pi-move" data-i="' + i + '" data-dir="-1"' + (i === 0 ? " disabled" : "") + ">UP</button>" +
-        '<button class="btn small" data-action="pi-move" data-i="' + i + '" data-dir="1"' + (i === day.items.length - 1 ? " disabled" : "") + ">DOWN</button>" +
-      "</div></div>";
-  }).join("");
-
-  html += '<div class="btnrow">' +
-    '<button class="btn primary" data-action="plan-add">+ ADD EXERCISE</button>' +
-    '<button class="btn" data-action="plan-save">SAVE</button></div>';
-
-  if (state.pickEx) html += exercisePicker("plan-pick");
-
-  html += '<div class="sechead">COPY THIS DAY TO</div>';
-  html += '<div class="daypick">' + dayOrder().filter(d => d !== sel).map(d =>
-    '<button data-action="plan-copy" data-day="' + d + '">' + DAY_LABEL[d].slice(0, 2) + "</button>"
-  ).join("") + "</div>";
-
-  html += '<div class="sechead">EXERCISE LIBRARY</div>';
-  const lib = state.exercises.filter(x => !x.archived);
-  if (!lib.length) {
-    html += '<p class="empty">Empty. Add the movements you actually do — nothing is preloaded, because the repo is public.</p>';
-  }
-  html += lib.map(x => {
-    const best = bestFor(x.id);
-    return '<div class="panel"><div class="row">' +
-      '<input type="text" class="grow" data-ex-name="' + x.id + '" value="' + esc(x.name) + '">' +
-      '<button class="btn small danger" data-action="ex-archive" data-id="' + x.id + '">ARCHIVE</button></div>' +
-      '<div class="exsub">' + esc(exKind(x).name.toUpperCase()) +
-        (best ? " · BEST " + esc(setText(x.id, best.set)) + " · " + esc(best.date.slice(5)) : " · NO RECORD") +
-      "</div></div>";
-  }).join("");
-
-  html += "<label>NEW EXERCISE</label>";
-  html += '<input type="text" id="f-ex-name" placeholder="Movement name" autocomplete="off">';
-  html += '<select id="f-ex-kind">' + EX_KINDS.map(k =>
-    '<option value="' + k.id + '">' + k.name + "</option>").join("") + "</select>";
-  html += '<div class="btnrow">' +
-    '<button class="btn primary" data-action="ex-new">ADD TO LIBRARY</button>' +
-    '<button class="btn" data-action="ex-save">SAVE NAMES</button></div>';
-  return html;
-}
-
-/* --- history --- */
-function renderTrainHistory() {
-  const days = allDays().filter(r => (r.items || []).some(e => e.sets.some(s => s.done)));
-  let html = "";
-
-  if (!days.length) {
-    html += '<p class="empty">No workouts logged yet.</p>';
-  } else {
-    html += '<div class="sechead">SESSIONS — ' + days.length + "</div>";
-    html += days.slice(0, 40).map(r =>
-      '<div class="panel">' +
-        '<div class="row"><div class="grow">' + esc(prettyDate(r.date)) +
-          (r.name ? " · " + esc(r.name) : "") + "</div>" +
-          '<div class="muted">' + doneCount(r) + "/" + r.items.length + "</div></div>" +
-        (r.items || []).map(e => {
-          const done = e.sets.filter(s => s.done);
-          if (!done.length) return "";
-          return '<div class="seg">' + esc(exName(e.exId)) + " · " +
-            done.map(s => esc(setText(e.exId, s))).join(" / ") + "</div>";
-        }).join("") +
-      "</div>"
-    ).join("");
-  }
-
-  const lib = state.exercises.filter(x => !x.archived);
-  if (lib.length) {
-    html += '<div class="sechead">PERSONAL BESTS</div>';
-    html += lib.map(x => {
-      const b = bestFor(x.id);
-      return '<div class="seg">' + esc(x.name) + " · " +
-        (b ? esc(setText(x.id, b.set)) + " · " + esc(b.date.slice(5)) : "NO RECORD") + "</div>";
-    }).join("");
-  }
-  return html;
 }
 
 /* ============================================================
@@ -2691,101 +2205,121 @@ async function renderConfig() {
   view.innerHTML = html;
 }
 
+function tabBtn(id, label) {
+  return '<button data-action="tab" data-tab="' + id + '" class="' +
+    (state.configTab === id && !state.editing ? "on" : "") + '">' + label + "</button>";
+}
+
+function runSummary(h) {
+  const ev = evaluateHabit(h, datesFor(completionIndex(), h.id), state.today);
+  return "CURRENT RUN " + ev.run + " · LONGEST " + ev.longest +
+    (ev.state === "fractured" ? " · SIGNAL DEGRADED" : "");
+}
+
+function renderContracts() {
+  const active = state.habits.filter(h => !h.archived);
+  const archived = state.habits.filter(h => h.archived);
+
+  let html = '<button class="btn primary full" data-action="new">+ NEW CONTRACT</button>';
+  html += '<div class="sechead">ACTIVE — ' + active.length + "</div>";
+
+  if (!active.length) {
+    html += '<p class="empty">Nothing here yet. A contract is one habit: a name, an attribute it feeds, how often it is due, and what it is worth.</p>';
+  } else {
+    html += active.map((h, i) =>
+      '<div class="panel" style="border-left:2px solid ' + attrColour(h.attrId) + '">' +
+        '<div class="row">' +
+          '<div class="grow">' +
+            '<div class="name">' + (h.icon ? esc(h.icon) + " " : "") + esc(h.name) + "</div>" +
+            '<div class="muted">' + esc(attrName(h.attrId)) + " · " + esc(h.tier.toUpperCase()) +
+              " · " + xpFor(h) + " XP · " + esc(cadenceLabel(h)) +
+              (h.external ? " · EXTERNAL" : "") + "</div>" +
+            '<div class="muted">' + esc(runSummary(h)) + "</div>" +
+          "</div>" +
+        "</div>" +
+        '<div class="btnrow">' +
+          '<button class="btn small" data-action="edit" data-id="' + h.id + '">EDIT</button>' +
+          '<button class="btn small" data-action="move" data-id="' + h.id + '" data-dir="-1"' + (i === 0 ? " disabled" : "") + ">UP</button>" +
+          '<button class="btn small" data-action="move" data-id="' + h.id + '" data-dir="1"' + (i === active.length - 1 ? " disabled" : "") + ">DOWN</button>" +
+          '<button class="btn small danger" data-action="archive" data-id="' + h.id + '">ARCHIVE</button>' +
+        "</div>" +
+      "</div>"
+    ).join("");
+  }
+
+  if (archived.length) {
+    html += '<div class="sechead">ARCHIVED — ' + archived.length + "</div>";
+    html += '<p class="muted">Archived contracts keep their history and can be restored.</p>';
+    html += archived.map(h =>
+      '<div class="panel">' +
+        '<div class="row">' +
+          '<div class="grow"><div class="name">' + esc(h.name) + "</div>" +
+          '<div class="muted">' + esc(attrName(h.attrId)) + "</div></div>" +
+          '<button class="btn small" data-action="restore" data-id="' + h.id + '">RESTORE</button>' +
+        "</div>" +
+      "</div>"
+    ).join("");
+  }
+  return html;
+}
+
+function renderEditor() {
+  const e = state.editing;
+  const c = e.cadence;
+
+  let html = '<div class="sechead">' + (e._isNew ? "NEW CONTRACT" : "EDIT CONTRACT") + "</div>";
+
+  html += "<label>NAME</label>" +
+    '<input type="text" id="f-name" value="' + esc(e.name) + '" placeholder="Morning run" autocomplete="off">';
+
+  html += "<label>ICON</label>" +
+    '<input type="text" id="f-icon" value="' + esc(e.icon) + '" placeholder="Optional glyph or emoji" maxlength="4">';
+
+  html += '<label>ATTRIBUTE</label><select id="f-attr">' +
+    state.attrs.filter(a => !a.archived).map(a =>
+      '<option value="' + a.id + '"' + (a.id === e.attrId ? " selected" : "") + ">" + esc(a.name) + "</option>"
+    ).join("") + "</select>";
+
+  html += '<label>TIER</label><select id="f-tier">' +
+    TIERS.map(t =>
+      '<option value="' + t + '"' + (t === e.tier ? " selected" : "") + ">" +
+      t.toUpperCase() + " — " + state.cfg.XP_TIERS[t] + " XP</option>"
+    ).join("") + "</select>";
+
+  html += '<label>CADENCE</label><select id="f-cadence" data-action="cadence-type">' +
+    [["daily", "Every day"],
+     ["weekdays", "Specific days of the week"],
+     ["n_per_week", "N times per week"],
+     ["n_per_month", "N times per month"]]
+    .map(o => '<option value="' + o[0] + '"' + (c.type === o[0] ? " selected" : "") + ">" + o[1] + "</option>")
+    .join("") + "</select>";
+
+  if (c.type === "weekdays") {
+    html += '<div class="daypick" style="margin-top:10px">' +
+      dayOrder().map(d =>
+        '<button data-action="day" data-day="' + d + '" class="' +
+        ((c.days || []).indexOf(d) !== -1 ? "on" : "") + '">' + DAY_LABEL[d].slice(0, 2) + "</button>"
+      ).join("") + "</div>";
+  }
+
+  if (c.type === "n_per_week" || c.type === "n_per_month") {
+    const max = c.type === "n_per_week" ? 7 : 31;
+    html += '<input type="number" id="f-n" min="1" max="' + max + '" value="' + (c.n || 1) +
+      '" style="margin-top:10px">';
+  }
+
+  html += "<label>NOTES</label><textarea id=\"f-notes\" placeholder=\"Optional\">" + esc(e.notes) + "</textarea>";
+
+  html += '<div class="btnrow">' +
+    '<button class="btn primary" data-action="save-habit">SAVE</button>' +
+    '<button class="btn" data-action="cancel-habit">CANCEL</button>' +
+    "</div>";
+
+  return html;
+}
+
 /* Any name typed but not yet saved is pulled into state before a
    re-render, so tapping a swatch never discards it. */
-/* Same contract as the attribute editor: pull anything typed but not
-   yet saved into state before a re-render. */
-function harvestPlan() {
-  document.querySelectorAll("[data-ex-name]").forEach(inp => {
-    const x = getExercise(inp.dataset.exName);
-    if (x && inp.value.trim()) x.name = inp.value.trim();
-  });
-  const nameEl = document.getElementById("f-day-name");
-  if (nameEl) planFor(Number(nameEl.dataset.day)).name = nameEl.value.trim();
-
-  const sel = state.planDay == null ? fromISO(state.today).getDay() : state.planDay;
-  const items = planFor(sel).items;
-  document.querySelectorAll("[data-pi]").forEach(inp => {
-    const it = items[Number(inp.dataset.pi)];
-    if (!it) return;
-    const v = inp.value === "" ? null : Number(inp.value);
-    if (v !== null && isNaN(v)) return;
-    if (inp.dataset.f === "sets") it.sets = Math.max(1, v || 1);
-    else it[inp.dataset.f] = v;
-  });
-}
-
-/* --- effects ---------------------------------------------------
-   One helper for every completion moment in the app. Each effect is
-   a one-shot class that is stripped again when it finishes, so
-   nothing is left animating and nothing loops. */
-function fx(el, name, ms) {
-  if (!el || reducedMotion()) return;
-  const cls = "fx-" + name;
-  el.classList.remove(cls);
-  void el.offsetWidth;                       // restart even if already applied
-  el.classList.add(cls);
-  setTimeout(() => el.classList.remove(cls), ms || 600);
-}
-
-function haptic(ms) {
-  if (navigator.vibrate && !reducedMotion()) navigator.vibrate(ms);
-}
-
-/* Ticking a set never re-renders. The screen is being used with sweaty
-   hands mid-set — a re-render would drop focus and wipe a half-typed
-   number — so state, storage and the DOM are updated in place. */
-async function toggleSet(btn) {
-  const rec = await materializeDay(state.today);
-  const entry = rec.items[Number(btn.dataset.i)];
-  if (!entry) return;
-  const set = entry.sets[Number(btn.dataset.s)];
-  if (!set) return;
-
-  set.done = !set.done;
-  const row = btn.closest(".wrow");
-  const block = btn.closest(".exblock");
-
-  if (set.done) {
-    // An empty box adopts whatever the placeholder was suggesting.
-    row.querySelectorAll(".gi").forEach(inp => {
-      if (inp.value === "" && inp.placeholder !== "") {
-        inp.value = inp.placeholder;
-        writeField(entry, Number(btn.dataset.s), inp.dataset.f, inp.value);
-      }
-    });
-  }
-
-  row.classList.toggle("done", set.done);
-  btn.classList.toggle("on", set.done);
-
-  if (set.done) {
-    fx(row, "sweep", 520);
-    fx(btn, "pop", 340);
-    haptic(10);
-  }
-
-  const complete = entryComplete(entry);
-  const was = block.classList.contains("complete");
-  block.classList.toggle("complete", complete);
-  if (complete && !was) {
-    fx(block, "jolt", 320);
-    fx(block.querySelector(".exname"), "chroma", 340);
-    haptic(24);
-  }
-
-  const counter = document.getElementById("wo-count");
-  if (counter) counter.textContent = doneCount(rec) + " / " + rec.items.length;
-
-  scheduleDaySave(state.today);
-
-  if (complete && !was && dayIsComplete(rec)) {
-    const sets = rec.items.reduce((n, e) => n + e.sets.filter(x => x.done).length, 0);
-    haptic(60);
-    showOverlay("Workout complete", tnum(sets), rec.items.length + " exercises cleared");
-  }
-}
-
 function harvestAttrNames() {
   document.querySelectorAll("[data-attr]").forEach(inp => {
     const at = getAttr(inp.dataset.attr);
@@ -2834,123 +2368,6 @@ function renderAttributes() {
   return html;
 }
 
-function runSummary(h) {
-  const ev = evaluateHabit(h, datesFor(completionIndex(), h.id), state.today);
-  return "CURRENT RUN " + ev.run + " · LONGEST " + ev.longest +
-    (ev.state === "fractured" ? " · SIGNAL DEGRADED" : "");
-}
-
-function tabBtn(id, label) {
-  return '<button data-action="tab" data-tab="' + id + '" class="' +
-    (state.configTab === id && !state.editing ? "on" : "") + '">' + label + "</button>";
-}
-
-function renderContracts() {
-  const active = state.habits.filter(h => !h.archived);
-  const archived = state.habits.filter(h => h.archived);
-
-  let html = '<button class="btn primary full" data-action="new">+ NEW CONTRACT</button>';
-  html += '<div class="sechead">ACTIVE — ' + active.length + "</div>";
-
-  if (!active.length) {
-    html += '<p class="empty">Nothing here yet. A contract is one habit: a name, an attribute it feeds, how often it is due, and what it is worth.</p>';
-  } else {
-    html += active.map((h, i) =>
-      '<div class="panel">' +
-        '<div class="row">' +
-          '<div class="grow">' +
-            '<div class="name">' + (h.icon ? esc(h.icon) + " " : "") + esc(h.name) + "</div>" +
-            '<div class="muted">' + esc(attrName(h.attrId)) + " · " + esc(h.tier.toUpperCase()) +
-              " · " + xpFor(h) + " XP · " + esc(cadenceLabel(h)) +
-              (h.external ? " · EXTERNAL" : "") + "</div>" +
-            '<div class="muted">' + esc(runSummary(h)) + "</div>" +
-          "</div>" +
-        "</div>" +
-        '<div class="btnrow">' +
-          '<button class="btn small" data-action="edit" data-id="' + h.id + '">EDIT</button>' +
-          '<button class="btn small" data-action="move" data-id="' + h.id + '" data-dir="-1"' + (i === 0 ? " disabled" : "") + ">UP</button>" +
-          '<button class="btn small" data-action="move" data-id="' + h.id + '" data-dir="1"' + (i === active.length - 1 ? " disabled" : "") + ">DOWN</button>" +
-          '<button class="btn small danger" data-action="archive" data-id="' + h.id + '">ARCHIVE</button>' +
-        "</div>" +
-      "</div>"
-    ).join("");
-  }
-
-  if (archived.length) {
-    html += '<div class="sechead">ARCHIVED — ' + archived.length + "</div>";
-    html += '<p class="muted">Archived contracts keep their history and can be restored.</p>';
-    html += archived.map(h =>
-      '<div class="panel">' +
-        '<div class="row">' +
-          '<div class="grow"><div class="name">' + esc(h.name) + "</div>" +
-          '<div class="muted">' + esc(attrName(h.attrId)) + "</div></div>" +
-          '<button class="btn small" data-action="restore" data-id="' + h.id + '">RESTORE</button>' +
-        "</div>" +
-      "</div>"
-    ).join("");
-  }
-  return html;
-}
-
-function renderEditor() {
-  const e = state.editing;
-  const c = e.cadence;
-
-  let html = '<div class="sechead">' + (e._isNew ? "NEW CONTRACT" : "EDIT CONTRACT") + "</div>";
-
-  html += "<label>NAME</label>" +
-    '<input type="text" id="f-name" value="' + esc(e.name) + '" placeholder="Morning run" autocomplete="off">';
-
-  html += "<label>ICON</label>" +
-    '<input type="text" id="f-icon" value="' + esc(e.icon) + '" placeholder="Optional glyph or emoji" maxlength="4">';
-
-  html += "<label>ATTRIBUTE</label><select id=\"f-attr\">" +
-    state.attrs.filter(a => !a.archived).map(a =>
-      '<option value="' + a.id + '"' + (a.id === e.attrId ? " selected" : "") + ">" + esc(a.name) + "</option>"
-    ).join("") + "</select>";
-
-  html += "<label>TIER</label><select id=\"f-tier\">" +
-    TIERS.map(t =>
-      '<option value="' + t + '"' + (t === e.tier ? " selected" : "") + ">" +
-      t.toUpperCase() + " — " + state.cfg.XP_TIERS[t] + " XP</option>"
-    ).join("") + "</select>";
-
-  html += "<label>CADENCE</label><select id=\"f-cadence\" data-action=\"cadence-type\">" +
-    [["daily", "Every day"],
-     ["weekdays", "Specific days of the week"],
-     ["n_per_week", "N times per week"],
-     ["n_per_month", "N times per month"]]
-    .map(o => '<option value="' + o[0] + '"' + (c.type === o[0] ? " selected" : "") + ">" + o[1] + "</option>")
-    .join("") + "</select>";
-
-  if (c.type === "weekdays") {
-    html += '<div class="daypick" style="margin-top:10px">' +
-      dayOrder().map(d =>
-        '<button data-action="day" data-day="' + d + '" class="' +
-        ((c.days || []).indexOf(d) !== -1 ? "on" : "") + '">' + DAY_LABEL[d].slice(0, 2) + "</button>"
-      ).join("") + "</div>";
-  }
-
-  if (c.type === "n_per_week" || c.type === "n_per_month") {
-    const max = c.type === "n_per_week" ? 7 : 31;
-    html += '<input type="number" id="f-n" min="1" max="' + max + '" value="' + (c.n || 1) +
-      '" style="margin-top:10px">';
-  }
-
-  html += '<div class="checkline" style="margin-top:16px">' +
-    '<input type="checkbox" id="f-external"' + (e.external ? " checked" : "") + ">" +
-    "<span>Satisfied by TRAINING only — cannot be tapped by hand</span></div>";
-
-  html += "<label>NOTES</label><textarea id=\"f-notes\" placeholder=\"Optional\">" + esc(e.notes) + "</textarea>";
-
-  html += '<div class="btnrow">' +
-    '<button class="btn primary" data-action="save-habit">SAVE</button>' +
-    '<button class="btn" data-action="cancel-habit">CANCEL</button>' +
-    "</div>";
-
-  return html;
-}
-
 function renderSettings() {
   const cfg = state.cfg;
   let html = '<div class="sechead">DISPLAY</div>';
@@ -2959,17 +2376,11 @@ function renderSettings() {
     (cfg.AMBIENT ? " checked" : "") + '><span>Ambient effects — scanlines and idle glitch</span></div>';
   html += '<p class="muted">Off by default. Nothing animates while the app sits idle.</p>';
 
-  html += "<label>WEEK STARTS ON</label><select id=\"f-weekstart\">" +
+  html += '<label>WEEK STARTS ON</label><select id="f-weekstart">' +
     [[0, "Sunday"], [1, "Monday"]].map(o =>
       '<option value="' + o[0] + '"' + (weekStartDay() === o[0] ? " selected" : "") + ">" + o[1] + "</option>"
     ).join("") + "</select>";
   html += '<p class="muted">Display only. Weekly targets and stored history stay on ISO weeks, Monday to Sunday.</p>';
-
-  html += "<label>TRAINING WEIGHT UNIT</label><select id=\"f-weight-unit\">" +
-    [["lb", "Pounds"], ["kg", "Kilograms"]].map(o =>
-      '<option value="' + o[0] + '"' + (state.cfg.WEIGHT_UNIT === o[0] ? " selected" : "") + ">" + o[1] + "</option>"
-    ).join("") + "</select>";
-  html += '<p class="muted">A label only. Numbers already logged are not converted.</p>';
 
   html += '<div class="sechead">TUNING</div>';
   html += '<div class="panel"><div class="muted">' +
@@ -3009,6 +2420,23 @@ function renderData() {
     "</div></div>";
 
   return html;
+}
+
+/* --- effects ---------------------------------------------------
+   One helper for every completion moment in the app. Each effect is
+   a one-shot class that is stripped again when it finishes, so
+   nothing is left animating and nothing loops. */
+function fx(el, name, ms) {
+  if (!el || reducedMotion()) return;
+  const cls = "fx-" + name;
+  el.classList.remove(cls);
+  void el.offsetWidth;                       // restart even if already applied
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), ms || 600);
+}
+
+function haptic(ms) {
+  if (navigator.vibrate && !reducedMotion()) navigator.vibrate(ms);
 }
 
 /* ============================================================
@@ -3114,20 +2542,13 @@ async function buildExport() {
     attrs: state.attrs,
     habits: state.habits,
     meta: state.meta,
-    exercises: state.exercises,
     plan: state.plan,
-    logs: {},
-    sessions: {}
+    logs: {}
   };
   const keys = await Store.listKeys("log:");
   for (const k of keys) {
     const rows = await Store.load(k);
     if (rows && rows.length) data.logs[k.slice(4)] = rows;
-  }
-  const wkeys = await Store.listKeys("wk:log:");
-  for (const k of wkeys) {
-    const rows = await Store.load(k);
-    if (rows && rows.length) data.sessions[k.slice(7)] = rows;
   }
   return {
     app: "night-city-os",
@@ -3178,17 +2599,14 @@ async function importJSON(text) {
   }
   if (!confirm("Replace all current data with this export? This cannot be undone.")) return;
 
-  const oldKeys = (await Store.listKeys("log:")).concat(await Store.listKeys("wk:log:"));
+  const oldKeys = await Store.listKeys("log:");
   for (const k of oldKeys) await Store.drop(k);
 
   state.cfg   = Object.assign(clone(DEFAULT_CFG), d.cfg || {});
   state.attrs = d.attrs;
   state.habits = d.habits;
   state.meta  = Object.assign(clone(DEFAULT_META), d.meta || {});
-  state.exercises = d.exercises || [];
-  state.plan      = d.plan || blankPlan();
   state.logs.clear();
-  state.wlogs.clear();
   invalidateIndex();
 
   await Store.save("cfg", state.cfg);
@@ -3196,21 +2614,11 @@ async function importJSON(text) {
   await Store.save("habits", state.habits);
   await Store.save("meta", state.meta);
 
-  await Store.save("wk:exercises", state.exercises);
-  await Store.save("wk:plan", state.plan);
-
   const logs = d.logs || {};
   for (const wk in logs) {
     if (Object.prototype.hasOwnProperty.call(logs, wk)) {
       state.logs.set(wk, logs[wk]);
       await Store.save("log:" + wk, logs[wk]);
-    }
-  }
-  const sess = d.sessions || {};
-  for (const wk in sess) {
-    if (Object.prototype.hasOwnProperty.call(sess, wk)) {
-      state.wlogs.set(wk, sess[wk]);
-      await Store.save("wk:log:" + wk, sess[wk]);
     }
   }
 
@@ -3237,118 +2645,6 @@ document.addEventListener("click", async function (ev) {
   } else if (a === "tab") {
     state.configTab = el.dataset.tab;
     state.editing = null;
-    render();
-  } else if (a === "ttab") {
-    state.trainTab = el.dataset.tab;
-    state.pickEx = false;
-    render();
-  } else if (a === "set-done") {
-    await toggleSet(el);
-  } else if (a === "set-add") {
-    const rec = await materializeDay(state.today);
-    rec.items[Number(el.dataset.i)].sets.push({ done: false });
-    await saveDay(state.today);
-    render();
-  } else if (a === "wo-addex") {
-    state.pickEx = true; render();
-  } else if (a === "wo-pick") {
-    const rec = await materializeDay(state.today);
-    const ex = getExercise(el.dataset.id);
-    rec.items.push({
-      itemId: null, exId: ex.id,
-      target: { sets: 3, reps: null, weight: null, seconds: null },
-      sets: newSets(3)
-    });
-    state.pickEx = false;
-    await saveDay(state.today);
-    render();
-  } else if (a === "wo-drop") {
-    const rec = await materializeDay(state.today);
-    rec.items.splice(Number(el.dataset.i), 1);
-    await saveDay(state.today);
-    render();
-  } else if (a === "wo-reset") {
-    if (!confirm("Discard today's logged sets and rebuild from the plan?")) return;
-    const wk = isoWeekOf(state.today);
-    const rows = state.wlogs.get(wk) || [];
-    const i = rows.findIndex(r => r.date === state.today);
-    if (i !== -1) { rows.splice(i, 1); await saveDay(state.today); }
-    render();
-  } else if (a === "plan-day") {
-    harvestPlan();
-    state.planDay = Number(el.dataset.day);
-    state.pickEx = false;
-    await savePlan();
-    render();
-  } else if (a === "plan-add") {
-    harvestPlan();
-    state.pickEx = true;
-    render();
-  } else if (a === "plan-pick") {
-    harvestPlan();
-    const sel = state.planDay == null ? fromISO(state.today).getDay() : state.planDay;
-    planFor(sel).items.push({ id: makeId("i_"), exId: el.dataset.id, sets: 3, reps: null, weight: null, seconds: null });
-    state.pickEx = false;
-    await savePlan();
-    render();
-  } else if (a === "plan-save") {
-    harvestPlan();
-    await savePlan();
-    toast("Plan saved.", "earn");
-    render();
-  } else if (a === "plan-copy") {
-    harvestPlan();
-    const sel = state.planDay == null ? fromISO(state.today).getDay() : state.planDay;
-    const target = Number(el.dataset.day);
-    const src = planFor(sel);
-    planFor(target).name = src.name;
-    planFor(target).items = src.items.map(it => Object.assign({}, it, { id: makeId("i_") }));
-    await savePlan();
-    toast("Copied to " + DAY_LABEL[target] + ".", "earn");
-    render();
-  } else if (a === "pi-del") {
-    harvestPlan();
-    const sel = state.planDay == null ? fromISO(state.today).getDay() : state.planDay;
-    planFor(sel).items.splice(Number(el.dataset.i), 1);
-    await savePlan();
-    render();
-  } else if (a === "pi-move") {
-    harvestPlan();
-    const sel = state.planDay == null ? fromISO(state.today).getDay() : state.planDay;
-    const items = planFor(sel).items;
-    const i = Number(el.dataset.i);
-    const j = i + Number(el.dataset.dir);
-    if (j < 0 || j >= items.length) return;
-    const t = items[i]; items[i] = items[j]; items[j] = t;
-    await savePlan();
-    render();
-  } else if (a === "pick-close") {
-    state.pickEx = false; render();
-  } else if (a === "ex-new") {
-    const nameEl = document.getElementById("f-ex-name");
-    const name = nameEl ? nameEl.value : "";
-    if (!name.trim()) { toast("Give the exercise a name.", true); return; }
-    harvestPlan();
-    state.exercises.push({
-      id: makeId("x_"),
-      name: name.trim(),
-      kind: (document.getElementById("f-ex-kind") || {}).value || "weight_reps",
-      archived: false,
-      createdAt: todayISO()
-    });
-    await Store.save("wk:exercises", state.exercises);
-    toast("Added to library.", "earn");
-    render();
-  } else if (a === "ex-save") {
-    harvestPlan();
-    await Store.save("wk:exercises", state.exercises);
-    toast("Saved.");
-    render();
-  } else if (a === "ex-archive") {
-    harvestPlan();
-    getExercise(el.dataset.id).archived = true;
-    await Store.save("wk:exercises", state.exercises);
-    toast("Archived. Past workouts keep it.");
     render();
   } else if (a === "rtab") {  } else if (a === "rtab") {
     state.recordsTab = el.dataset.tab;
@@ -3453,19 +2749,6 @@ document.addEventListener("click", async function (ev) {
   }
 });
 
-/* Live entry. Writes into state on every keystroke and defers the
-   storage write, so a set survives the phone locking mid-workout. */
-document.addEventListener("input", async function (ev) {
-  const el = ev.target;
-  if (!el.classList || !el.classList.contains("gi")) return;
-  if (el.dataset.i === undefined) return;
-  const rec = await materializeDay(state.today);
-  const entry = rec.items[Number(el.dataset.i)];
-  if (!entry) return;
-  writeField(entry, Number(el.dataset.s), el.dataset.f, el.value);
-  scheduleDaySave(state.today);
-});
-
 document.addEventListener("change", async function (ev) {
   const el = ev.target;
 
@@ -3484,13 +2767,6 @@ document.addEventListener("change", async function (ev) {
     state.cfg.AMBIENT = el.checked;
     await Store.save("cfg", state.cfg);
     applyAmbient();
-    return;
-  }
-
-  if (el.id === "f-weight-unit") {
-    state.cfg.WEIGHT_UNIT = el.value;
-    await Store.save("cfg", state.cfg);
-    render();
     return;
   }
 
@@ -3583,29 +2859,22 @@ async function boot() {
 
   state.habits = await Store.load("habits");
   if (!state.habits) { state.habits = []; await Store.save("habits", state.habits); }
+  else {
+    /* The external flag existed only for the gym module. With TRAINING
+       gone nothing can satisfy such a contract, so it would sit
+       permanently unclearable. Clearing the flag can only make days
+       more complete, never less, so no XP is lost. */
+    let freed = false;
+    state.habits.forEach(h => { if (h.external) { h.external = false; freed = true; } });
+    if (freed) await Store.save("habits", state.habits);
+  }
 
   state.meta = await Store.load("meta");
   if (!state.meta) { state.meta = clone(DEFAULT_META); await Store.save("meta", state.meta); }
   if (!state.meta.records) state.meta.records = {};
 
-  state.exercises = (await Store.load("wk:exercises")) || [];
-  state.plan = (await Store.load("wk:plan")) || blankPlan();
-
-  /* One-time move to pounds, and legacy distance exercises fold into
-     the time kind since the rework dropped that measurement. */
-  if (!state.cfg.UNIT_PATCH) {
-    state.cfg.WEIGHT_UNIT = "lb";
-    state.cfg.UNIT_PATCH = true;
-    await Store.save("cfg", state.cfg);
-  }
-  let exPatched = false;
-  state.exercises.forEach(x => {
-    if (x.kind === "distance_time") { x.kind = "duration"; exPatched = true; }
-  });
-  if (exPatched) await Store.save("wk:exercises", state.exercises);
 
   await loadAllLogs();
-  await loadAllWorkouts();
   await syncPerks();
   await snapshotTotals();
   render();
