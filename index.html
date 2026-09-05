@@ -103,7 +103,19 @@ html, body {
   font: 500 17px/1.4 var(--f-ui);
   -webkit-text-size-adjust: 100%;
 }
-body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+
+/* App shell. The page itself never scrolls — the column fills the
+   viewport and only <main> scrolls inside it. A fixed-position nav
+   sits above the browser chrome on screens too short to scroll, which
+   put the bar in a different place on every tab. This cannot. */
+html { height: 100%; }
+body {
+  height: 100vh;
+  height: 100dvh;              /* tracks the collapsing iOS toolbar */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
 /* Ambient scanlines. Static, never animated, default off — a tracker
    opened for fifteen seconds a day is not a battery consideration. */
@@ -122,6 +134,7 @@ body[data-ambient="1"]::after {
 
 /* --- shell --- */
 .topbar {
+  flex: 0 0 auto;
   padding: calc(12px + env(safe-area-inset-top)) 16px 0;
   border-bottom: 1px solid var(--line-weak);
 }
@@ -137,13 +150,23 @@ body[data-ambient="1"]::after {
   color: var(--text-secondary);
 }
 
-main { padding: 16px; max-width: 640px; margin: 0 auto; }
+main {
+  flex: 1 1 auto;
+  min-height: 0;               /* lets the flex child actually shrink */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
 main.screen-in { animation: rise var(--t-screen) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 /* --- bottom navigation. Four slots plus the locked fifth. --- */
 .navbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  flex: 0 0 auto; z-index: 40;
   display: flex;
   background: var(--bg-panel);
   border-top: 1px solid var(--line-weak);
@@ -554,7 +577,7 @@ textarea { min-height: 76px; resize: vertical; }
 
 #update {
   position: fixed; left: 16px; right: 16px;
-  bottom: calc(84px + env(safe-area-inset-bottom));
+  bottom: calc(72px + env(safe-area-inset-bottom));
   z-index: 55;
   max-width: 608px; margin: 0 auto;
   display: none; align-items: center; justify-content: space-between; gap: 12px;
@@ -569,7 +592,7 @@ textarea { min-height: 76px; resize: vertical; }
 
 #toast {
   position: fixed; left: 16px; right: 16px;
-  bottom: calc(84px + env(safe-area-inset-bottom));
+  bottom: calc(72px + env(safe-area-inset-bottom));
   z-index: 50;
   max-width: 608px; margin: 0 auto;
   padding: 13px 15px;
@@ -1933,7 +1956,7 @@ async function render() {
   else if (state.view === "records") renderRecords();
   else await renderConfig();
   paintPersistState();
-  window.scrollTo(0, 0);
+  view.scrollTop = 0;
   document.querySelectorAll(".strip").forEach(s => { s.scrollLeft = s.scrollWidth; });
   runStatsAnimation();
 }
