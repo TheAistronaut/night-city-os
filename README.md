@@ -47,21 +47,26 @@ serving from cache.**
 
 ## Training
 
-TRAINING → PLAN builds the exercise library. Each exercise declares what
-it measures — weight and reps, reps only, distance and time, or duration
-— so lifting, calisthenics, running and classes all work without a
-schema change. Routines are named groups of exercises.
+Standalone. It shares the storage and the visual language with the rest
+of the app and nothing else — no XP, no contracts, no streaks. Logging a
+workout does not clear a contract.
 
-Nothing is preloaded. The repo is public, so no exercise or contract is
-hardcoded.
+**PLAN** builds one exercise list per weekday, each with a name (Push,
+Legs, Rest), a set count and optional targets. COPY THIS DAY TO
+duplicates a day across the week. Exercises live in a library and
+declare what they measure: weight and reps, reps only, or time.
 
-A session in progress is written to storage on every change, so a locked
-phone or a reload mid-workout loses nothing.
+**TODAY** shows that weekday's plan as a grid — one row per set, with
+boxes for weight and reps (or minutes and seconds) and a tick. The
+placeholder in each box is your target, or what you did last time, and
+ticking an empty box adopts it. Nothing is preloaded and no record is
+written until you actually touch something, so rest days stay out of the
+history.
 
-**Feeding XP.** Sessions do not award XP directly. Create a contract in
-CONFIG with the TRAINING flag set, point a routine at it, and finishing a
-session clears that contract at its tier value. Contracts flagged this
-way cannot be tapped by hand.
+**HISTORY** lists past workouts and derives personal bests from them.
+
+Weight unit is set in CONFIG → SETTINGS. It is a label only; changing it
+does not convert numbers already logged.
 
 ## Backups
 
